@@ -1,0 +1,9 @@
+{
+  "name": "whatsapp-clone-tutorial",
+  "description": "A newly created Tortilla project",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Urigo/WhatsApp-Clone-Tutorial.git"
+  }
+}
