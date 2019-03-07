@@ -1,0 +1,6 @@
+[submodule "server"]
+	path = server
+	url = git@github.com:Urigo/WhatsApp-Clone-server.git
+[submodule "client"]
+	path = client
+	url = git@github.com:Urigo/WhatsApp-Clone-Client-React.git	
