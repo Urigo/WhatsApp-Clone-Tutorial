@@ -1,0 +1,118 @@
+Styled-components is a relatively new library that will transpile a given string into a CSS string and will encapsulate it under a React.Component. What's good about it is that you can define your style programmatically and it fits very well into React. With JavaScript in-hand you naturally have more control over your style, which makes it a very powerful tool.
+
+Here's one way to style a button using styled-components:
+
+```js
+const Button = styled.button`
+  background: transparent;
+  border-radius: 3px;
+  border: 2px solid palevioletred;
+  color: palevioletred;
+  margin: 0.5em 1em;
+  padding: 0.25em 1em;
+
+  ${props => props.primary && css`
+    background: palevioletred;
+    color: white;
+  `}
+`;
+```
+
+The created Button is actually a React.Component, so an instance of it can be created with ease like any other component:
+
+```jsx
+  <Button primary />
+```
+
+More information about styled-components can be found in the official [docs page](https://www.styled-components.com/docs).
+
+We would also use [Material-UI](https://material-ui.com/) - a library with a set of React components that implements Google's Material Design. What's good about it is that the design is already implemented right out of the box. Not only that, but it also includes a set of icons which are free to use.
+
+There are many many things that Material-UI can offer, and it's not easy to follow it up, especially with the constantly evolving and improving API. The best way to go with it, is to have a component, and then look for it in the [official website](https://material-ui.com/). When it comes to searching for icons, they can be found in the [material.io](https://material-ui.com/) website through the search bar. As we move further in this tutorial you should have a better grasp of Material and how to use it.
+
+![material-ui-icons](https://user-images.githubusercontent.com/7648874/54141504-c853e000-4460-11e9-94b5-aae98ec9a1e3.png)
+
+We will start off by installing both libraries:
+
+  $ npm install @material-ui/core @material-ui/icons styled-components
+
+`@material-ui/core` includes core component of Material-UI such as Input, Popover, Modal, etc, and `@material-ui/icons` includes a set of icons. Material is very generic and has a built in theming system which can be controlled by simply setting few variables, which is exactly what we're gonna need in our app.
+
+In our app we're mainly gonna use 2 colors:
+
+- Primary #306759
+- Secondary #79e352
+
+Theme definition can easily be done in Material using the MuiThemeProvider component:
+
+{{{ diffStep "2.2" module="client" }}}
+
+Once we have it set, the colors should be available to use in our application by simply providing the "color" prop to the component instance whose color we would like to change:
+
+```jsx
+<Button color="primary">Primary</Button>
+<Button color="secondary">Secondary</Button>
+```
+
+In our app, we're also gonna use CSS directly to change its colors, therefore it would be handy to have these theme variables available to us through CSS. To do so, we will have have a second definition of these variables in `index.css`, at the `:root` level of our application.
+
+{{{ diffStep "2.3" module="client" }}}
+
+`:root` is a pseudo element that simply represents the root node, which will make the colors available in all elements. Normally, it works like JavaScript's scoping system and it will make variables available only to the current node and to its children, NOT its parents. CSS vars can be used like so:
+
+```css
+  color: var(--primary-text);
+  background-color: var(--primary-bg);
+```
+
+More information about CSS variables can be found in the [official MDN docs](https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_variables).
+
+So getting back to the ChatsListScreen, we will wrap the ChatsNavbar with Material's <Toolbar /> component:
+
+{{{ diffStep "2.4" module="client" files="ChatsNavbar.tsx" }}}
+
+And we will replace the `<ul />` and `<li />` elements with Material's `<List />` and `<ListItem />` in ChatsList:
+
+{{{ diffStep "2.4" module="client" files="ChatsList.tsx" }}}
+
+Thanks to the `button` attribute we can give our list a more vibrant feeling and that will display a nice ripple effect once an item is clicked, something that could have taken a long time to implement manually.
+
+Next, we will use `styled-components` to create new React.Components which are bound into a style-sheet. This way when we create new instances of them, the components will be styled right out of the box. Example:
+
+```jsx
+const Button = styled.button `
+  border-radius: 999px;
+`
+
+const RedButton = styled(Button) `
+  color: red;
+`
+
+const GreenButton = styled(Button) `
+  color: green;
+`
+
+const BlueButton = styled(Button) `
+  color: blue;
+`
+
+const Dashboard = (
+  <div>
+    <RedButton />
+    <GreenButton />
+    <BlueButton />
+  </div>
+)
+```
+
+The clear advantage of such working strategy is that all the styles are encapsulated, unlike traditional CSS where style rules can easily collide and be merged unintentionally. Remember that **`styled-components` operates per component, not globally**. In terms of syntax and API there isn't much to explain, it's very intuitive and if you would follow the step-diffs in this tutorial carefully you should get the hang of `styled-components` pretty easily.
+
+Accordingly, let's use `styled-components` our `ChatsListScreen`:
+
+{{{ diffStep "2.5" module="client" files="ChatsListScreen" }}}
+
+Notice that we've changed the structure of the HTML of the ChatsList component. We've added the ChatInfo to allow better alignment of the elements. **There isn't right or wrong way to define CSS rules and HTML, as long as the script is clear and easy to understand, that will do**.
+
+We're done styling `ChatsListScreen`. We will keep using the same principles to style the rest of the components in our application. The final result should look like so:
+
+![screenshot](https://user-images.githubusercontent.com/7648874/54141766-40baa100-4461-11e9-8dd0-59edcfdb3b84.png)
