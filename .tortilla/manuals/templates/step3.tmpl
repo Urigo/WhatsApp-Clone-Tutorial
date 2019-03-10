@@ -1,0 +1,131 @@
+So we have a running app with a single screen which looks stylish and presents some data to the user. There is something missing though. The data that is presented is just a mock for a server response, and it represents the schema of some real data to come.
+
+Even if we'll create real data on the client, that means that when the client is down, all the data is lost. But this is a social app, many people want to use it together and even the same person wants to use it on multiple devices. For that, we need a central place to store all data and all the clients would connect to that central place in order to retrieve or change the data.
+
+In this step, we will write a Node.JS server and will expose a REST endpoint that will serve the data-mock. We will build the REST application using [Express](https://www.npmjs.com/package/express). Further in this tutorial, we will migrate to using a real data-base with real I/O from the user, so we got you covered.
+
+The plan is to have a server up and running at `localhost:4000` that will expose a `GET /chats` route. Unlike our client application, we're not gonna use any boilerplate and we're gonna set everything up manually. Ofcourse, you should feel free to use a boilerplate if it looks right to you. Right outside the client project, we will create a new directory called `whatsapp-clone-server` in which we will start creating our server:
+
+    $ mkdir whatsapp-clone-server
+    $ cd whatsapp-clone-server
+
+Then we will use NPM to initialize a new project:
+
+    $ npm init --yes
+
+> `--yes` will answer yes to all questions and skip the prompt. It's just faster this way.
+
+There's nothing special about this command, it only creates a basic package.json which we can add things on top (see [NPM's official docs](https://docs.npmjs.com/cli/init)). Just to make sure that things work, we will add an `index.js` file which will print "hello world" to the console.
+
+{{{ diffStep "1.1" module="server" files="index.js" }}}
+
+
+And we will add a startup script to the `package.json` file called `start`:
+
+    start: node index.js
+
+NPM-scripts are just a way to defined an alias for commands. Now we only have one simple script, but it can turn out to be something very complex depending on our server, so it can be very useful. More about npm-scripts can be found in the [official NPM docs](https://docs.npmjs.com/misc/scripts).
+
+Now we can run our server by running `$ npm start` and we should see the message "hello world" printed to the console, as expected.
+
+Like in our client's app, we will be using TypeScript. It's comfortable and it enables consistency between both apps. In order to use TypeScript we will install few packages:
+
+    $ npm install --dev typescript ts-node @types/node
+
+> Note how we used the `--dev` flag. This project is not gonna be required as an external dependency anywhere, but It is still common to separate between production dependencies and development dependencies. More about the `--dev` option can be read in the [NPM-install docs](https://docs.npmjs.com/cli/install).
+
+- The [`typescript`](https://www.npmjs.com/package/typescript) package is TypeScript's core transpiler.
+- [`ts-node`](https://www.npmjs.com/package/ts-node) is an interpreter that will transpile required `.ts` files into JavaScript at runtime.
+- [`@types/node`](https://www.npmjs.com/package/@types/node) will make the appropriate definitions for a Node.JS environment.
+
+> You can read more about the `@types` monorepo in the [official GitHub repository](https://github.com/DefinitelyTyped/DefinitelyTyped).
+
+Our server is gonna use the following `tsconfig.json` file, feel free to make the necessary modifications based on your needs:
+
+{{{ diffStep "1.2" module="server" files="tsconfig.json" }}}
+
+We will rename the `index.js` file to `index.ts`:
+
+    $ mv index.js index.ts
+
+And we will update the npm-script `start` to use `ts-node`, since we wanna use TypeScript, and not JavaScript directly:
+
+    start: ts-node index.ts
+
+We can test the startup of our server again by running `$ npm start` and we should see the message "hello world" printed to the console. The skeleton of the project is set and we can move on to implementing the REST API.
+
+Like we said at the beginning, we will be using Express to setup the API. Express is wrap around the native [Node.JS "http"](https://nodejs.org/api/http.html) library which is responsible for handling HTTP requests. Yes, it can also be used directly, but Express is much more comfortable and has an amazing ecosystem built around it. Let's install Express and its TypeScript definitions:
+
+    $ npm install express
+    $ npm install --dev @types/express
+
+Before we implement the `GET /chats` route we will implement a `GET /_ping` route. This route will be used to determine whether the server is up and running or not, and how fast the connection is based on the response time. For every request sent to this route, we should expect a response saying "pong". Some call it "heartbeat", because this route is being tested repeatedly by the hosting machine to check if it's alive, just like a heartbeat in a way. This is how the route should look like:
+
+{{{ diffStep "1.3" module="server" files="index.ts" }}}
+
+We can use the `$ curl localhost:4000/_ping` command to send a request to the server and we should get a "pong", assuming that the server available on that URL. The `GET /chats` should be implemented similarly, only the response is different. Instead of returning "pong" we will return the data-mock for our chats:
+
+{{{ diffStep "1.4" module="server" files="index.ts, db.ts" }}}
+
+Unlike the previous route, we used the `.json()` method this time around to send a response. This will simply stringify the given JSON and set the right headers. Similarly to the client, we've defined the db mock in a dedicated file, as this is easier to maintain and look at.
+
+It's also recommended to connect a middleware called [`cors`](https://www.npmjs.com/package/cors) which will enable cross-origin requests. Without it we will only be able to make requests in localhost, something which is likely to limit us in the future because we would probably host our server somewhere separate than the client application. Let's install the `cors` library and load it with the Express `middleware()` function:
+
+    $ npm install cors
+
+{{{ diffStep "1.4" module="server" files="index.ts" }}}
+
+The server is now ready to use! So getting back to the client, first we will define our server's URL under the `.env` file:
+
+{{{ diffStep "3.1" module="client" }}}
+
+This will make our server's URL available under the `process.env.REACT_APP_SERVER_URL` member expression and it will be replaced with a fixed value at build time, just like macros. The `.env` file is a file which will automatically be loaded to `process.env` by the [`dotenv`](https://www.npmjs.com/package/dotenv) NPM package. `react-scripts` then filters environment variables which have a `REACT_APP_` prefix and provides the created JSON to a Webpack plugin called [DefinePlugin](https://webpack.js.org/plugins/define-plugin/), which will result in the macro effect.
+
+Now let's move back into our React app folder. We will now replace the local data-mock usage with a fetch from the server. For that we can use the native [fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API), however, it needs to be used in the right life-cycle hook of the React.Component.
+
+There are 2 naive approaches for that:
+
+- Calling `fetch()` outside the component, but this way that chats will be fetched even if we're not even intending to create an instance of the component.
+
+```js
+fetch().then(() => /* ... */)
+const MyComponent = () => {}
+```
+
+- Calling `fetch()` inside the component, but then it will be invoked whenever the component is re-rendered.
+
+```js
+const MyComponent = () => {
+  fetch().then(() => /* ... */)
+}
+```
+
+These 2 approaches indeed work, but they both fail to deliver what's necessary on the right time. In addition, there's no way to properly coordinate async function calls with the render method of the component.
+
+**Introducing: React hooks**
+
+With React hooks we can invoke the desired logic in the right life-cycle stage of the target component. This way we can avoid potential memory leaks or extra calculations. To implement a proper `fetch()`, we will be using 2 React hooks:
+
+- [`React.useState()`](https://reactjs.org/docs/hooks-reference.html#usestate) - which is used to get and set a state of the component - will be used to store the fetch chats.
+
+```js
+const [value, setValue] = useState(initialValue)
+```
+
+- [`React.useMemo()`](https://reactjs.org/docs/hooks-reference.html#usememo) - which is used to run a computation only once certain conditions were met - will be used to run the `fetch()` function only once the component has mounted.
+
+```js
+const memoizedValue = useMemo(calcFn, [cond1, cond2, ...conds])
+```
+
+The result of that approach will look like this, in the context of our ChatsList component:
+
+{{{ diffStep "3.2" module="client" }}}
+
+> It's recommended to read about React hooks and their basic concept at the [official React docs page](https://reactjs.org/docs/hooks-overview.html).
+
+At this point we can get rid of `db.ts` file in the client, since we don't use it anymore:
+
+    $ rm src/db.ts
+
+That's it. Our ChatsListScreen is now connected to a working back-end. In the next step we will upgrade our REST API into a GraphQL API and we will create a basis for a more robust back-end.
