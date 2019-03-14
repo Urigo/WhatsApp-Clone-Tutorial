@@ -1,0 +1,156 @@
+Testing is a crucial part when writing an application, especially if we're planning to publish it or make it a commercial thing. Before we hand someone a product, of any kind, we wanna make sure that it passes certain quality checks. We're signed on that product and so it's very important to ensure that it functions properly according our expectations, otherwise wouldn't wanna use it and will look for alternatives.
+
+In the context of software, we constantly make changes. It's also inevitable to make all features completely independent from one another, so something in the app is likely to break as we upgrade it or maintain it. That's why we need to write a set of tests that can be run on demand, so when we implement a new feature we can simply run the tests and see what feature broke due to most recent changes.
+
+There are currently 3 main testing frameworks in the NPM ecosystem: [Jasmine](https://jasmine.github.io/), [Mocha](https://mochajs.org/), and [Jest](https://jestjs.io/). Each testing framework has its pros, and cons, and at the end of the day it's a matter of preference. In our application we're gonna use [Jest](https://jestjs.io/) - a testing framework which was developed by Facebook. What's good about Jest is that it can be used to test both client and server logic, because it runs as a Node.JS application, but it also emulates the browser environment whenever we run it, thanks to [JSDOM](https://github.com/jsdom/jsdom).
+
+![jest](https://user-images.githubusercontent.com/7648874/54493900-e2ce0380-490f-11e9-8075-be4a236c7c38.png)
+
+In this chapter we will learn how to test the React.Components in the client, and Apollo-GraphQL resolvers in the server. There are 3 kinds of tests:
+
+- Unit tests - which are used to test a single component, independently from other components in our system.
+- Integration tests - which are used to test a component in relation to other components in our systems (how well do they co-work with each other).
+- e2e tests (end to end) - which are used to test a complete, from the moment I clicked on a button in the user interface until the data gets back from the server and shown on the screen.
+
+The efficiency of the tests go from bottom to top (unit -> e2e), but the maintenance and complexity go from bottom to top (e2e -> unit). Accordingly we will need to find a good balance where we don’t spend too much time on writing tests yet have a good indicator for how well our system functions. So we should write a lot of unit tests, a good amount of integration tests and a handful of e2e tests.
+
+![tests-types-table](https://user-images.githubusercontent.com/7648874/54494121-fed2a480-4911-11e9-9370-694ec989729b.png)
+
+We will start with the client as it’s much easier, because Jest is set and ready to use right out of the box thanks to `create-react-app`.
+
+**Client - Testing React.Components**
+
+Thanks to `create-react-app`, we have Jest set and ready to use right out of the box, so we can start writing tests right away. I you'll look at the `src` you'll see a file called `App.test.tsx`, which simply ensures that the component can be rendered without crashing.
+
+```jsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import App from './App';
+
+it('renders without crashing', () => {
+  const div = document.createElement('div');
+  ReactDOM.render(<App />, div);
+  ReactDOM.unmountComponentAtNode(div);
+});
+```
+
+This is not a typical test that you're likely to find in a React project, but it demonstrates very well how Jest can be used to test DOM related issues. If you'll run `$ npm run test` (or `$ yarn test`) in the command line and then press `a`, you should see the following output:
+
+![report](https://user-images.githubusercontent.com/7648874/54341429-eabe4700-4674-11e9-8e76-3aaaf7fec79a.png)
+
+Jest will automatically run for every file that ends with a `.test.xxx` extension. This is very convenient because the tests can live right next to the component, and you don't need to lookup for it across the project. This behavior can be modified by configuring Jest in the `package.json` file under the `"jest"` field. More information about configuring Jest can be found in the official[ configuration documentation](https://jestjs.io/docs/en/configuration).
+
+> If you get a warning message regards wrapping the component with `act()` - this is a known issue with hooks and should have a proper solution soon. More about this issue and progress regards its fix can be found in this [GitHub thread](https://github.com/facebook/react/issues/14769#issuecomment-470097212).
+
+Now we're gonna write a basic test for the `<ChatsList />` component. In the test, we'll mock a fake response from the server, and examine the contents of rendered HTML. Since the HTML of the component is a dynamic thing and is constantly subject to changes, it would be a good idea to annotate it with `data-testid` attributes so it can be tested regardless of its structure:
+
+{{{ diffStep "5.1" module="client" files="ChatsList.tsx" }}}
+
+Now we can select various HTML elements with a query selector when we test the component. We will install a couple of packages that will assist us in implementing the test:
+
+  $ yarn add jest-fetch-mock jest-dom react-testing-library
+
+- The [`jest-fetch-mock`](https://www.npmjs.com/package/jest-fetch-mock) package can mock responses emitted by the Fetch API.
+- The [`jest-dom`](https://www.npmjs.com/package/jsdom) package will add custom matchers that will help us examine HTML contents of DOM elements.
+- The [`react-testing-library`](https://www.npmjs.com/package/react-testing-library) package contains utility methods that will help us test React.Components with Jest.
+
+Next, we will create a file under the `src` folder called `setupTests.ts`. This file is loaded configured automatically by `create-react-app` and loaded by Jest, and we can use it to set up our testing environment according to our needs (like said earlier, Jest can be configured, so this file path can be changed). We will use that file to define a fake Fetch API using the `jest-fetch-mock` library:
+
+{{{ diffStep "5.2" module="client" files="src/setupTests.ts" }}}
+
+We will create another file called `ChatsList.test.tsx`, right next to the `<ChatsList />` component under the `ChatsListScreen` directory, and inside we will implement our test. The test should follow these steps:
+
+- Mock the response to contain a fake chat, so we won't need to make an actual call to our GraphQL API.
+- We will create a new instance of `<ChatsList />` and render it in a container element.
+- We will wait for changes in the DOM caused by `setState()`.
+- We will test the contents of the container.
+
+And this is how the implementation should look like:
+
+{{{ diffStep "5.3" module="client" files="src/components/ChatsListScreen/ChatsList.test.tsx" }}}
+
+> Jest API is vast but pretty intuitive for the most part. It mostly consists of test descriptors and matchers. [Here's a full list of all matchers which are built into Jest's API](https://jestjs.io/docs/en/expect). Always make sure to work against it when writing tests, for optimal results.
+
+We will now move on to testing the server where we will learn how to setup Jest manually and test it against a GraphQL API.
+
+**Server - Testing GraphQL resolvers**
+
+To set-up Jest, we will run the following in the command line:
+
+    $ yarn add --dev jest @types/jest ts-jest
+
+
+This will basically install Jest and make it useable with TypeScript. 
+In addition, we will need to specify the file pattern that we would like to transform with [`ts-jest`](https://www.npmjs.com/package/ts-jest), by adding the following section to `package.json`:
+
+```
+{
+  "jest": {
+    "transform": {
+      "^.+\\.(js|jsx|ts|tsx)$": "<rootDir>/node_modules/ts-jest"
+    }
+  }
+}
+```
+
+We will also add a `"test"` script in the `package.json` file, 
+so we can run the tests with `$ yarn test`:
+
+```
+{
+  "scripts": {
+    "test": "jest"
+  }
+}
+```
+
+This is how our `package.json` should look like at this point:
+
+{{{ diffStep "3.1" module="server" files="package.json" }}}
+
+Now we're gonna test the `chats` query in our GraphQL schema. To do so, we will setup an Apollo Client and send a query request to our back-end, and then we will match the received response with a pre-defined snapshot. Luckily, we don't have to set an actual client, since the tests and the implementation of the back-end live right next to each other, thus, we will install a package which will help us achieving so:
+
+    $ yarn add --dev apollo-server-testing
+
+We will define the test suite under the `tests/queries` folder in a file called `getChats.test.ts`:
+
+{{{ diffStep "3.2" module="server" files="tests/queries/getChats.test.ts" }}}
+
+In the test function, we create a new instance of the Apollo-GraphQL server using our schema, and we query some data against it thanks to the fake client created by [`apollo-server-testing`](https://www.npmjs.com/package/apollo-server-testing).
+
+The `.toMatchSnapshot()` matcher will call the `toString()` method on the examined object and will test it against a predefined snapshot. 
+The snapshot will automatically be created once we run the test for the first time and will be stored under the `__snapshot__` directory. 
+This means that the first test run will always pass. This is useful because you can later on observe and adjust manually the snapshot manually without having to write it from scratch. 
+
+So let's do our first test run for the server:
+
+    $ yarn test
+
+The expected result should be a projection of the data stored in the `db.ts` file.
+
+{{{ diffStep "3.2" module="server" files="tests/queries/__snapshots__" }}}
+
+Always be sure to observe the snapshot before moving on! The received result isn't necessarily what you'd expect. Also it's not a good practice to store production data in the snapshot because it's subject to changes. Normally we would set up another instance of the DB for testing purposes, but since our DB is a mock and doesn't represent real data, there's no need to at this stage.
+
+Now that we have the required knowledge regards testing and Jest's API, we will implement tests throughout the tutorial as a trivial thing. We will not go through each and every new matcher that we introduce, as it is self explanatory and there's too much of them. Be sure to work against [this full list of matchers](https://jestjs.io/docs/en/expect) when working with Jest.
+
+In the next chapter we will continue expanding our application by adding a `<ChatRoomScreen />`.
+
+----------
+TODO: Check what changed on testing in create-react-app 3.0 https://facebook.github.io/create-react-app/docs/running-tests
+
+TODO: I think ts-jest could be configured in a simpler way, but need to check 
+	{ preset: 'ts-jest' }
+
+TODO: I don’t like using jest’s toMatchSnapshot() to compare operation’s result that comes from the real GraphQL Schema (with resolvers). 
+It might change quite a lot and break tests. That data might be huge and hard to be validated by looking at it. Maybe checking a structure is a better approach?
+
+TODO: Why ts-jest?
+
+TODO: Change into tortilla diff:
+
+TODO: Change into Tortilla diif:
+
+TODO: Test with UTC timezone so it would work on all computers
+
+TODO: const server = new ApolloServer({ typeDefs }); // easier, no need to compile the schema before
