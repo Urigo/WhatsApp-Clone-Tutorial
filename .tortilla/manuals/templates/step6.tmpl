@@ -1,0 +1,227 @@
+In this chapter we will learn how to build a chat room screen. 
+In order to navigate between different screens, we will setup a router. 
+
+Since we're gonna have two screens in our app now - `ChatsListScreen` and `ChatRoomScreen`, we will need a router that will be able to alternate between them. 
+We will be using the [`react-router-dom`](https://www.npmjs.com/package/react-router-dom) package to manage the routes of the application:
+
+    $ yarn add react-router-dom @types/react-router-dom
+
+And we will implement a router directly in the `<App />` component:
+
+{{{ diffStep 6.1 module="client" files="App" }}}
+
+The purpose of a router is to make route managing easy and declarative. 
+It will take care of managing the history within our app and parameterize certain screens according to our need. 
+Essentially it's a wrap around the `window.history` object which is also compatible with React. 
+I recommend you to go through the [official MDN docs](https://developer.mozilla.org/en-US/docs/Web/API/History) if you're not yet familiar with the concept.
+
+The `<Route />` component represents a path for a route in our application. Using the colon syntax (`:chatId`) we basically tell the router that the `/chat` route should be followed by a string whose value can later on be addressed via a parameter called `chatId` when navigating to the route. So here's a sum-up of the routes manifest:
+
+
+
+*   `/chats` - will navigate to the `ChatsListScreen`.
+*   `/chat/:chatId` - e.g. `/chat/1`, will navigate to the `ChatRoomScreen` and will parameterize it to show data which is related to chat ID 1.
+*   Any other route will fallback to the `/chats` route which will redirect us to the `ChatsListScreen`.
+
+Now we will implement the `ChatRoomScreen` so the router can function properly. 
+For now we will make it a plain screen which simply prints out the information of the chat that was clicked so we can have a complete flow, 
+and then we will take care of the rest.
+
+To do so, we will first implement the `chat` query in our backend. 
+This would be a parameterized query that will provide us with a specific chat according to the received ID, 
+and it will be used by the new screen as soon as it is initialized. 
+First we would update the `Chat` type to contain a `messages` field:
+
+{{{ diffStep 4.1 module="server" files="typeDefs.graphql" }}}
+
+Then we will create the appropriate resolver:
+
+{{{ diffStep 4.1 module="server" files="resolvers.ts" }}}
+
+And then we will update our DB mock to be aligned with these changes:
+
+{{{ diffStep 4.1 module="server" files="db" }}}
+
+This means that when we resolve `Chat.lastMessage`, we should get it directly from the `Chat.messages` field:
+
+{{{ diffStep 4.2 module="server" }}}
+
+Now that we have an updated schema which is relevant to the new screen that we would like to add, we will declare a new query called `chat`:
+
+{{{ diffStep 4.3 module="server" files="schema/typeDefs" }}}
+
+Note that unlike the `chats` query, this time we have a parameter. The parameters are provided to the resolver function as the second parameter as a JSON. Using the provided parameter - the chat ID, we will find and return the relevant chat from the DB:
+
+{{{ diffStep 4.3 module="server" files="schema/resolvers" }}}
+
+> More about the resolver signature can be read in [Apollo-GraphQL's official docs page](https://www.apollographql.com/docs/apollo-server/essentials/data.html#type-signature).
+
+Now we will add a test suite:
+
+{{{ diffStep 4.3 module="server" files="tests/queries/getChat.test" }}}
+
+We can observe the snapshot created by Jest to get a better understanding of how the response should look like:
+
+{{{ diffStep 4.3 module="server" files="__snapshot__" }}}
+
+If you experience any TypeScript related issues with the following error:
+
+```
+Object literal may only specify known properties, and 'variables' does not exist in type 'Query'.
+```
+
+Add the following declaration file to your project:
+
+{{{ diffStep 4.3 module="server" files="types" }}}
+
+This is a [known issue](https://github.com/apollographql/apollo-server/issues/2172) in the `apollo-server-testing` package and has a pending [fix PR](https://github.com/apollographql/apollo-server/pull/2307). 
+Now getting back to the client, let's implement a basic version of the `ChatRoomScreen` where we will fetch the new query and print it to the screen:
+
+{{{ diffStep 6.2 module="client" }}}
+
+Note how we used the `match.params.chatId` variable to get the selected chat ID. 
+The `match` prop is defined and provided to us by the `<Route />` component, since it interfaces directly with the `ChatRoomScreen`. 
+More about that can be read in the [official docs page](https://reacttraining.com/react-router/core/api/match). 
+
+In many examples online, you can see people pass the `match` prop directly to the component.
+The main issue with that is that this makes the component being usable only by a router, but the truth is that the component
+doesn't care if it's consumed by a router or another parents component as long as they will pass the `chatId` prop.
+
+So we need to make sure the interface of the ChatRoom component defines those requierements right.
+
+Next we will call our server from the component with the right query and store the result on a `useState` hook.
+
+Now, because we are using GraphQL, we know the types of the result that we are going to get, so let's create Typescript interfaces that
+describe the data we're going to get from the server.
+
+If you'll run the application and type `/chats/1` in the URL bar, this is what you should see on the screen:
+
+![naked-chat](https://user-images.githubusercontent.com/7648874/54664314-d4096b80-4b1e-11e9-9e06-1323cf7b0abe.png)
+
+The view has no styling at all but it should be fixed in a moment. 
+To make navigation more convenient we will add an `onClick` listener for each chat item in the `ChatsList`. 
+Using the [history](https://reacttraining.com/react-router/core/api/history) object, provided to us by the `<Route />` component, 
+we will navigate to the correlated `ChatRoomScreen`:
+
+First let's install the `history` package:
+
+    $ yarn add history @types/history
+
+{{{ diffStep 6.3 module="client" }}}
+
+And add test the new logic:
+
+{{{ diffStep 6.4 module="client" }}}
+
+If you'll click on the chat item you'll see that the screen changes very suddenly. 
+We can smooth the transition by animating it with CSS. 
+Luckily we don't need to implemented such mechanism manually because there's a package that can do that for us - [`react-router-transition`](https://www.npmjs.com/package/react-router-transition):
+
+    $ yarn add react-router-transition
+
+And let's add the mising types for the library: 
+
+{{{ diffStep 6.5 module="client" files="react-app-env.d.ts" }}}    
+
+Using this package, we will create a custom `Switch` component that will play an animation for all its subordinate `Route` components. 
+The animation is defined by the user using a component called `AnimatedSwitch` as specified in the [package's docs page](http://maisano.github.io/react-router-transition/animated-switch/props). 
+So first, let's create our switch component that will play a smooth transition switching routes:
+
+{{{ diffStep 6.5 module="client" files="AnimatedSwitch" }}}
+
+And then replace it with the main `Switch` component in our app:
+
+{{{ diffStep 6.5 module="client" files="App" }}}
+
+Both components act identically and thus there shall be no special treatment. Behold the new transition effect:
+
+![transition-demo](https://user-images.githubusercontent.com/7648874/54739398-ebb22400-4bf2-11e9-8d4c-2aeb65deeb92.gif)
+
+The final screen will be composed out of 3 components:
+
+
+
+*   A navigation bar.
+*   A messages list.
+*   A message input.
+
+We will create a new directory under the path `public/assets` and inside we will download and place a couple of assets which are necessary for our view:
+
+*   [chat-background.jpg](https://raw.githubusercontent.com/Urigo/WhatsApp-Clone-Client-Angular/master/src/assets/chat-background.jpg)
+*   [message-mine.png](https://raw.githubusercontent.com/Urigo/WhatsApp-Clone-Client-Angular/master/src/assets/message-mine.png)
+
+In the main `index.ts` file of the screen we will simply import all 3 in the right order. 
+We will start with the most simple one - the `ChatRoomNavbar`. 
+The navbar should show the picture of the chat we're currently at and its name, 
+along with a back button that will bring us back to the `ChatsListScreen`:
+
+{{{ diffStep 6.6 module="client" files="ChatNavbar" }}}
+
+Next, would be the `MesagesList` component, where we will see a scrollable list of all the messages of the active chat:
+
+{{{ diffStep 6.6 module="client" files="MessagesList" }}}
+
+And finally, would be the `MessageInput` component which will trigger an event whenever we type and submit a new message:
+
+{{{ diffStep 6.6 module="client" files="MessageInput" }}}
+
+Now that we have all 3 components, we will put them all together in the main `index.ts` file:
+
+{{{ diffStep 6.6 module="client" files="index" }}}
+
+And let's also send the new required `history` props to our `ChatRoomScreen` component:
+
+{{{ diffStep 6.6 module="client" files="App.tsx" }}}
+
+The view is complete! However the `MessageInput` is not bound to our messages list. 
+We will use the triggered callback to update the chat state, whose changes should appear in the `MessagesList` component in the following render phase:
+
+{{{ diffStep 6.7 module="client" }}}
+
+This is how the entire flow should look like:
+
+![flow-demo](https://user-images.githubusercontent.com/7648874/54739741-27012280-4bf4-11e9-97cb-c715482e2e70.gif)
+
+An edge case that should be taken care of is when the messages list length in the view exceeds the length of the container, 
+in which case we will have to scroll down to the bottom of the view. 
+This way we can keep track of the most recent message. 
+We will use `ReactDOM` to retrieve the native HTML element of the container and change the position of the scroller whenever a messages was sent:
+
+{{{ diffStep 6.8 module="client" }}}
+
+Before we wrap things up, we should also test our components. 
+Since the new components have a direct control over the app's history, 
+we should also find a way to simulate it in our tests. 
+Because `react-dom-router` uses the [`history`](https://www.npmjs.com/package/history) package under the hood, 
+that means that we can use that package to inject a custom history object directly into the tested components:
+
+{{{ diffStep 6.9 module="client" files="components" }}}
+
+There are many things which are incomplete in the current implementation. The functionality exists in the UI, but no messages are really being sent and stored in the database. In the next chapters we will learn how to:
+
+
+
+*   Cache query results with Apollo-Client.
+*   Send messages with GraphQL mutations
+
+--------
+TODO: Add this to router chapter - https://www.pluralsight.com/guides/react-router-typescript
+And this - https://stackoverflow.com/questions/49342390/typescript-how-to-add-type-check-for-history-object-in-react
+
+TODO: https://medium.com/@jrwebdev/react-higher-order-component-patterns-in-typescript-42278f7590fb
+
+TODO: https://www.cypress.io/blog/2019/05/13/code-create-react-app-v3-and-its-cypress-tests-using-typescript/#
+
+TODO: Schema says there’s always an array with messages, is it really true? Is newly created chat resolves an empty array, null will throw an error?
+
+TODO: Same thing with `chats: [Chat!]!`, do we always return an array here?
+
+TODO: _root and type all resolvers
+
+TODO: How to import schema together with jest, should I changed from ts-jest?
+
+TODO: remove all that part including the file in the commit
+
+TODO: Add all the new files and changes on 6.6
+
+TODO: Add all the new files and changes on 6.7
