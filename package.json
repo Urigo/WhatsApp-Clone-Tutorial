@@ -21,6 +21,7 @@
     "reactjs",
     "fullstack",
     "websocket",
-    "socketio"
+    "socketio",
+    "cache"
   ]
 }

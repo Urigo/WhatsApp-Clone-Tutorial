@@ -1,0 +1,160 @@
+In the previous step we've implemented a `ChatRoomScreen` where we were able to view each chat's messages list by clicking on a chat item from the main screen. 
+It all looks functional, however, there's a significant optimization issue - each time we navigate into a `ChatRoomScreen`, 
+we need to re-fetch the data related to the target chat.
+
+The solution for that would be [caching](https://en.wikipedia.org/wiki/Cache_(computing)) the fetch result, 
+so it can be re-used once we re-enter a screen that we've visited before. 
+For now things are fairly simple so the caching mechanism can be implemented manually, 
+but things are gonna get tougher when we add more queries or things like message sending and profile updating to the mix, 
+so it's not gonna be an easy task. 
+
+Luckily, in the Apollo team they've invented a solution that works right out of the box and integrates perfectly with Apollo-GraphQL server - [Apollo-GraphQL client](https://www.apollographql.com/docs/link/#apollo-client).
+
+
+![caching](https://user-images.githubusercontent.com/7648874/54871150-f505e100-4dea-11e9-9e2d-439fbf3eaebe.png)
+
+
+
+Apollo-Client is a wrap around our GraphQL endpoint which essentially uses HTTP requests (and further on [web-sockets](https://en.wikipedia.org/wiki/WebSocket), but we will get there), something that we've implemented manually so far. 
+Not only it can be used to fetch data, but it will also cache the result of the query so it can be seamlessly re-used when we request the same data. 
+This means that we will need to setup an Apollo-Client and replace all our `fetch()` calls with `client.query()` call. 
+More about Apollo-Client's API further in this tutorial, but let's start configuring it. 
+First we will install few essential NPM packages:
+
+    $ yarn add apollo-client apollo-cache-inmemory apollo-link apollo-link-http
+
+
+
+*   [`apollo-client`](https://www.npmjs.com/package/apollo-client) - Apollo-Client's core package, as we explained earlier.
+*   [`apollo-cache-inmemory`](https://www.npmjs.com/package/apollo-cache-inmemory) - The data store that will be used to cache the results.
+*   [`apollo-link-http`](https://www.npmjs.com/package/apollo-link-http) - Get GraphQL results over a network using HTTP fetch.
+
+We will create a new file in the `src` directory called `client.ts` and inside we will export the client:
+
+{{{ diffStep 7.1 module="client" files="client" }}}
+
+Although the client can be used directly and integrated into any UI framework, it would be the most comfortable to use a wrap around it which is suitable for React. 
+For that we will use Apollo's React Hooks package called [`@apollo/react-hooks`](https://github.com/apollographql/react-apollo) which includes a set of 
+[React hooks](https://reactjs.org/docs/hooks-intro.html) that can connect between our Apollo-Client and target React.Component:
+
+    $ yarn add @apollo/react-hooks graphql-tag graphql
+
+With `@apollo/react-hooks` we can use the `useQuery()` hook to fetch data from our GraphQL API. 
+The `graphql-tag` package is used to parse the GraphQL string to an [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree), 
+something which is required when using Apollo Client. Example:
+
+
+```
+import gql from 'graphql-tag';
+import { useQuery } from '@apollo/react-hooks';
+
+const GET_DOGS = gql`
+  {
+    dogs {
+      id
+      breed
+    }
+  }
+`;
+
+const Dogs = () => {
+  const { data, error, loading } = useQuery(GET_DOGS);
+  if (loading) {
+    return <div>Loading...</div>;
+  };
+  if (error) {
+    return <div>Error! {error.message}</div>;
+  };
+
+  return (
+    <ul>
+      {data.dogs.map(dog => (
+        <li key={dog.id}>{dog.breed}</li>
+      ))}
+    </ul>
+  );
+};
+```
+
+
+The package requires a small setup so that imported hooks can use our Apollo-Client:
+
+{{{ diffStep 7.2 module="client" files="index" }}}
+
+The code above uses the [Context/Provider](https://reactjs.org/docs/context.html) API, thus the client is now known globally. 
+Now that we can use the `useQuery()` hook, there's no need to use the native Fetch API anymore. 
+Let's replace all our Fetch API call instances with a React hook:
+
+{{{ diffStep 7.3 module="client" files="components" }}}
+
+You can see that we've fetched the query using Apollo client, and we removed the `setChat` call because Apollo will know automatically to place the results in the cache.
+
+And you can see we can also work directly with the cache.
+
+On the `OnSendMessage` function we take the new message and push it to Apollo Client's cache. 
+
+Now if we'll scroll to another screen and come back, the messages will still be displayed there.
+
+You can see that we've added the `__typename` when we push a new chat to the cache.
+That's how Apollo Client knows where to place the results.
+
+The replacement is finished. Note that we removed the usage of `useMemo()` - because Apollo has an internal cache mechanism, there's no need to memoize the result anymore. 
+We also used the [`writeQuery()`](https://www.apollographql.com/docs/react/features/caching.html#writequery-and-writefragment) method to edit the stored result in the cache, so in the next render phase we would have an updated chat with the newly added message.
+
+We shouldn't see any change at all in the view and the response time, since we're running it locally, but if we will take a look at the `network` tab in the browser's dev-tools we should notice the differences:
+
+**before**
+
+![fetch](https://user-images.githubusercontent.com/7648874/54871305-e5879780-4dec-11e9-87bb-3279e9e18342.png)
+
+**after**
+
+![apollo](https://user-images.githubusercontent.com/7648874/54871319-1bc51700-4ded-11e9-9001-d5518bedf9ad.png)
+
+> Above: ChatsListScreen -> ChatRoomScreen -> ChatsListScreen -> ChatRoomScreen
+
+This test is obviously very rough, but the deviation is so big that you don't need any accuracy to emphasize the difference. 
+The blue stripes represents the requests made and the time they took. Before we had about 6 request phases, while after we had only 3 of them.
+
+Since we don't use the Fetch API anymore, we will also need to update our tests. 
+Right now we mock the response from the fetch API, but a more appropriate way would be creating a fake Apollo Client where we will be able to mock the results. 
+For that we will install a package called [`apollo-link-mock`](https://www.npmjs.com/package/apollo-link-mock):
+
+    $ yarn add --dev apollo-link-mock
+
+And we will create a `test-helpers.ts` file under the `src` directory that will contain the utility function for creating a fake Apollo Client:
+
+{{{ diffStep 7.4 module="client" files="test-helpers" }}}
+
+The fake client accepts an array of mocks where each mock object will have a `request` key that will contain details about the request and a `result` key which will contain the mocked result. 
+You should get a better understanding of how it works now that we will replace the fake Fetch calls with fake Apollo Clients:
+
+{{{ diffStep 7.4 module="client" files="src/components" }}}
+
+We are telling Apollo mock to give a certain result each time it gets a specific query.
+
+Note how we used the `ApolloProvider` component to provide the target component with the fake Apollo Client. 
+Like so, any other component which uses Apollo Client should be wrapped with an ApolloProvider when rendering it, otherwise it will not function as intended:
+
+{{{ diffStep 7.4 module="client" files="src/App" }}}
+
+That's it for this chapter. There's one thing missing to make our `ChatRoomScreen` functional and that would be actually sending a message to the backend and updating the DB. In the next chapter we will learn how to do exactly that with our new Apollo-Client.
+
+
+--------------------
+
+TODO: Change the whole intro.
+
+TODO: I think we might want to explain the cache in more details
+how it’s normalized
+how some parts update automatically and some do not
+what’s the smallest unit stored in the cache
+and other stuff
+this might help later on with optimistic responses and mutations in general
+
+TODO: Remove all label code
+
+TODO: Create a drawing of the cache.
+TODO: Change typename from Chat to Message
+
+TODO: Explain a bit about Apollo links.
