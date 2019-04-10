@@ -1,0 +1,126 @@
+In the previous step we’ve set the ground for the authentication system in our app. We have a users collection which can be used to distinguish which data the client is authorized to view, and we have a context handler which can retrieve the current user logged in based on the received value of the `cookie` header. It’s definitely a good starting point, but it misses a lot of things.
+
+In this chapter we will implement a cookie-based authentication system. There are many ways to implement an authentication system in an app, but cookie-based authentication is one of the most popular ones, hence we will go with that method. Essentially the authentication flow in our app should look very simple: a user will be able to sign-in with a dedicated screen, and if he doesn’t own an account he can use the sign-up screen to create a new one. The more complicated part in this flow is the back-end, which is the core of this chapter. So before we get into the implementation, we need to understand the authentication process:
+
+- A user logs in with a username and a password.
+The server compares the received username and password to the ones stored in the database.
+- If the comparison was successful, the server will generate a token and will set it as a cookie.
+- Each time a request is sent, the server will retrieve the username from the stored token on the cookie header and will send data back accordingly.
+
+![auth-flow](https://user-images.githubusercontent.com/7648874/55929679-55e94200-5c50-11e9-9fe7-54ad6194a572.png)
+
+The stored token will save us the hassle of re-specifying the username and password over and over again each and every request. It’s important to note that everything in the authentication process is encrypted, **sensitive information will never be stored or sent in its raw form**, otherwise data might be stolen in case of a DB breach or a request hijacking. This is what it means for our app:
+
+- Passwords will always be stored in an encrypted form in the DB using an algorithm called [Bcrypt](https://en.wikipedia.org/wiki/Bcrypt). Bcrypt has the ability to compare the password in its raw form to the encrypted one, which can help us authorize the user.
+
+- Tokens are self contained. That means that once we decode the encrypted string we can get a hold of the username string. This form of encrypted tokens is called [Json Web Token (JWT)](https://jwt.io/).
+
+> We're not going to elaborate about the algorithm behind each encryption method because we want to focus more on practicality, although it's very much recommended to understand how each method works before proceeding.
+
+The implementation will follow the principles above. Authentication is a hot topic in the GraphQL world and there are several ways of doing so. We will start with the back-end and set the infrastructure for authentication, and then we will move on to the front-end.
+
+We’re gonna expose 2 new mutations from GraphQL Schema: `signIn` and `signUp`. `/sign-out` is unnecessary because it can be done locally by deleting the right cookie. Our back-end is gonna grow bigger so first we will separate the Express app from the Apollo Server instance, and extract the env vars to a dedicated module:
+
+{{{ diffStep 10.1 module="server" }}}
+
+We will first start with the `signIn` mutation, so we can test it against pre-defined user credentials, and then we will proceed to implementing the `signUp` mutation. It would be a lot easier to progress this way. For that we will install a couple of packages:
+
+- `bcrypt` - which is responsible for running a one-way encryption against received passwords before they’re stored in the DB.
+- `jsonwebtoken` - responsible for encrypting the logged-in username before it’s set as a cooky and decrypting it once it’s sent back with a request.
+
+    $ yarn add bcrypt jsonwebtoken
+
+
+    $ yarn add --dev @types/bcrypt @types/jsonwebtoken
+
+And we will implement the `signIn` mutation:
+
+{{{ diffStep 10.2 module="server" }}}
+
+As you can see we use a special secret before we encrypt the username with JWT. The same secret will be used later on to decrypt the token back into username when getting requests. If someone malicious will get a hold of that password, he can fabricate an authentication token for every user that he wants, **thus it’s important to choose a strong secret**.
+
+When building the context for our GraphQL resolvers, we will decode the received cookie with JWT using the same secret to determine the username who made the request. Once we have that username, we can simply retrieve the original user from the DB and define it on the context:
+
+{{{ diffStep 10.3 module="server" }}}
+
+You might have noticed that the User schema has been updated, because we try to address the `user.username` property. The authentication in our app will be done with a username and a password; accordingly, we will update our User type definitions and the user documents in the users collection mock. The credentials that we’re going to store can actually be used to sign-in to our app:
+
+{{{ diffStep 10.4 module="server" }}}
+
+To test it out, we will run our front-end application and open the dev-console. Using the Apollo Client we will send a request to the `signIn` mutation. We can use the credentials of one of the users stored in the DB. As for now all our restricted routes are observing the `currentUserId` cookie. This is wrong and no longer relevant. Let’s change the `withAuth()` method to observe the `authToken` cookie so we can test our new mutation successfully:
+
+{{{ diffStep 13.1 module="client" }}}
+
+Now we can perform the signIn. It would be a good idea to signIn with the first user - `ray`, since all the DB mock is built around him:
+
+```js
+mutation signIn(username: 'ray', password: '111') {
+  id
+}
+```
+
+Now if we would look at the value of `document.cookie` we should see a key named `authToken` with a JWT token and the `ChatsListScreen` should show the chats which are relevant to `ray`. To complete the sign-in flow we would need to update the `AuthScreen` and the `auth.service` to use username and password and the actual `sign-in` mutation we’ve just implemented.
+
+Now back to the `auth.service`, we will replace the `signIn()` method implementation with one that actually calls the `signIn` mutation in our API. We will start by defining the mutation:
+
+{{{ diffStep 13.2 module="client" files="graphql/mutations" }}}
+
+Updating `codegen.yml` to include the file we've just added in the generation process:
+
+{{{ diffStep 13.2 module="client" files="codegen.yml" }}}
+
+And finally, we will update the service to use the generated mutation method `useSignInMutation()`:
+
+{{{ diffStep 13.2 module="client" files="auth.service.ts" }}}
+
+To check if we’re authorized to visit a route, not only we would need to check if we have the `authToken` cookie defined, but we would also need to validate it against the server to see that it actually references a real user. For that we will implement `Query.me` which will send us back the current user logged in directly from the context:
+
+{{{ diffStep 10.5 module="server" }}}
+
+Now will use the GraphQL query we’ve just implemented to check if the user actually exists within the DB before we proceed to the restricted route:
+
+{{{ diffStep 13.3 module="client" }}}
+
+we will use the new query to try and fetch the user directly from the back-end, and we will only proceed if the user was actually found. In addition, we will replace the `signIn()` method to call `signIn` mutation:
+
+{{{ diffStep 13.4 module="client" }}}
+
+The behavior of the updated screen should be identical to what we had so far. To complete the flow we’ll need a way to signUp. When we signing-up we will need the following parameters: `name`, `username`, `password` and `passwordConfirm`. In addition we will need to run certain validations against the parameters:
+
+- The name must be at least 3 and at most 50 characters long.
+- The username must be at least 3 and at most 18 characters long.
+- A password must be at least 8 and at most 30 characters long. In addition, it should contain English letters, numbers, and special characters.
+
+For that we will implement a dedicated validations module:
+
+{{{ diffStep 10.6 module="server" files="validators" }}}
+
+And we will implement the resolver and schema for the `signUp` mutation:
+
+{{{ diffStep 10.6 module="server" files="schema" }}}
+
+Before encrypting the password we append a string called “salt” to it. Even though the passwords are stored encrypted in the DB, a hacker might use a dictionary of common passwords in their encrypted form to decipher the original password. When adding salt to a password which is essentially a random string, the hacker cannot use a dictionary anymore since he would need to know the salt. Hypothetically, the hacker can get a hold of the salt and re-generate the entire dictionary, however that would take too long because of the way Bcrypt is designed to work.
+
+Going back to the client, we will implement a new `signUp()` method in the `auth.service` that will call the `signUp` mutation:
+
+{{{ diffStep 13.5 module="client" }}}
+
+Now we will implement a dedicated `SignUpForm` that we can use to perform the sign-up. Instead of implementing a new screen, we will use the `AuthScreen` to alternate between the `SignInForm` and the `SignUpForm` using `AnimatedSwitch`. This way we can have a container component that is common for both forms, and we will be able to switch between the two very smoothly. We will first define a new `/sign-up` route in our router:
+
+{{{ diffStep 13.6 module="client" module="App" }}}
+
+And then we will make the necessary changes in the `AuthScreen`:
+
+{{{ diffStep 13.6 module="client" module="AuthScreen" }}}
+
+> Note how we used the `/sign-(in|up)` pattern to define the `signUp` mutation. This is because the request will be further redirected in the `AuthScreen`.
+
+The authentication flow is complete! To test it out, you can create a new user, log in with it and start chatting with other users.
+
+{{#noop}}
+  TODO: maybe use HttpOnly in cookie
+  save user’s id or data in localStorage so we can guess if a user is logged in or not and later on invalidate it
+  we send a password in its raw form over the wire
+  Error message: “req.password and req.passwordConfirm don't match” looks odd, should be “Passwords don’t match”
+  Why is `const maySignUp = useCallback(() => {` a useCallback and not useMemo for example? We do use a value there.
+{{/noop}}
