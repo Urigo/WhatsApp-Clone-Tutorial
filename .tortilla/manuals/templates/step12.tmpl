@@ -1,0 +1,85 @@
+Now that the users system is ready it would be a lot more comfortable to implement a chat creation feature. In the original Whatsapp, you can create a new chat based on your available contacts - a list of your contacts will appear on the screen and by picking one of the items you’ll basically be able to start chatting with the selected contact. However, since in our app we don’t have any real contacts (yet), we will implement the chats creation feature based on all available users in our DB. By picking a user from the users list we will be able to start chatting with it.
+
+![demo](https://user-images.githubusercontent.com/7648874/55896445-e4c67200-5bf0-11e9-9c1c-88318642ef81.gif)
+
+To be able to fetch users in our system we will need to add a new query called `users`. The `users` query will retrieve all users except for current user:
+
+{{{ diffStep 9.1 module="server" }}}
+
+This query will be reflected in a component called `UsersList`. First we will define and export a new fragment called `User`:
+
+{{{ diffStep 12.1 module="client" files="graphql/fragments" }}}
+
+And then we will implement the `UsersList` component which is going to use the `users` query with the `User` fragment:
+
+{{{ diffStep 12.1 module="client" files="UsersList" }}}
+
+The list is likely to change when a new user signs-up. We will implement a subscription and live-update the list further this tutorial when we go through authentication. Now we will implement a new screen component called `ChatCreationScreen`. The screen will simply render the `UsersList` along with a navigation bar:
+
+{{{ diffStep 12.1 module="client" files="ChatCreationScreen" }}}
+
+The screen will be available under the route `/new-chat`. The new route will be restricted, since only authenticated users should be able to access it:
+
+{{{ diffStep 12.1 module="client" files="App" }}}
+
+the `/new-chat` route will be accessible directly from the main `ChatsListScreen`. We will implement a navigation button which is gonna have a fixed position at the bottom right corner of the screen:
+
+{{{ diffStep 12.1 module="client" files="AddChatButton" }}}
+
+And then we will render it in the `ChatsListScreen`:
+
+{{{ diffStep 12.1 module="client" files="ChatsListScreen/index" }}}
+
+For now we can only observe the users list. Our goal now is to be able to start chatting with a user once it has been clicked. First we will need to add a new mutation called `addChat` which will create a new chat document and add it to the chats collection. If the chat already exists we will return the existing instance. This behavior will help us navigate to the desired `ChatRoomScreen`, whether it exists or not:
+
+{{{ diffStep 9.2 module="server" }}}
+
+To use the new mutation, we will define a new callback called `onUserPick` in the `UsersList` so it can be used from the `ChatCreationScreen`:
+
+{{{ diffStep 12.2 module="client" files="UsersList" }}}
+
+In the `ChatCreationScreen/index.tsx` module, we will define an `AddChat` document with `graphql-tag`. Using the `$ yarn codegen` command we can generate the correlated React mutation hook and use it as the `onUserPick` callback:
+
+{{{ diffStep 12.2 module="client" files="ChatCreationScreen/index" }}}
+
+Chats can now be created, you can test out the function by signing in with different users. However, the chats list in the `ChatsListScreen` will not be updated unless we refresh the page manually. In the server project, we will define a new subscription called `chatAdded`. The subscription should be broadcasted to the current user only if he is a participant of the published chat:
+
+{{{ diffStep 9.3 module="server" }}}
+
+Now we will listen to the new subscription in the client and update the cache. First we will define the subscription document:
+
+{{{ diffStep 12.3 module="client" files="graphql/subscriptions" }}}
+
+And then we will update the `cache.service` to write the broadcasted chat to the store. We will write the fragment, and we will also update the `chats` query to contain the new chat. We will also check if the chat already exists before we update the query, because remember, the `addChat` mutation will return the chat even if it already exists, not if it was created only:
+
+{{{ diffStep 12.3 module="client" }}}
+
+Now we can create new chats, and the chats list would be updated, without refreshing the page. You can also test it with 2 separate sessions in the browser and see how each tab/window affects the other. Lastly, we will implement a chat removal function. This is important as we don’t want to garbage our chats collection, sometimes we would like to clean up some of them.
+
+In the back-end, let’s implement the `removeChat` mutation. The chat can only be removed only if the current user is one of the chat’s participants. The mutation will also remove all the messages which are related to the target chat, since we’re not gonna use them anymore. The chat will be removed for all participants. This is not exactly the behavior of the original Whatsapp, but to keep things simple we will go with that solution:
+
+{{{ diffStep 9.4 module="server" }}}
+
+In the client app, a chat could be removed directly from the `ChatRoomScreen`. On the top right corner, right on the navbar, we will add a dispose button that will call the `removeChat` mutation. Just like we did before, we will define the mutation document with `graphql-tag` and generate the correlated hook with CodeGen:
+
+{{{ diffStep 12.4 module="client" }}}
+
+Normally this is a dangerous behavior because we wipe out the entire history without any warnings, which is not recommended. For tutoring purposes only we will keep it the way it is, because it makes things simple and easier to understand.
+
+To be able to update the chats list cache, we will implement a `chatRemoved` subscription. The subscription will be broadcasted only to those who’re participants of the published chat:
+
+{{{ diffStep 9.5 module="server" }}}
+
+In the client, we will define the right subscription document:
+
+{{{ diffStep 12.5 module="client" files="graphql/subscriptions" }}}
+
+And we will update the `cache.service` to listen to the new subscription and update the `chats` query accordingly. When we deal with the fragment, we remove the `FullChat` fragment because it consists of the `Chat` fragment. If it was the other way around, we would still have some data leftovers from the `FullChat` on the fragment, because of how Apollo-Cache manages the store:
+
+{{{ diffStep 12.5 module="client" files="cache.service" }}}
+
+We will also update the `ChatRoomScreen` to redirect us to the `/chats` route if the chat was not found. The render method of the component will be re-triggered automatically by `react-apollo-hooks` if the cached result of `useGetChat()` hook has changed, which means that even if you didn’t actively remove the chat, you will still be redirected as a result:
+
+{{{ diffStep 12.5 module="client" files="ChatRoom" }}}
+
+TODO: maybe mention that ApolloCache doesn’t have Garbage Collector so even though the object is removed, everything else related to it says in cache.
