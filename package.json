@@ -21,10 +21,6 @@
     "reactjs",
     "fullstack",
     "websocket",
-    "socketio",
-    "auth",
-    "authentication",
-    "cookie",
-    "cookies"
+    "socketio"
   ]
 }
