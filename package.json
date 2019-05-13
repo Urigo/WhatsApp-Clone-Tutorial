@@ -21,6 +21,8 @@
     "reactjs",
     "fullstack",
     "websocket",
-    "socketio"
+    "socketio",
+    "rest",
+    "rest api"
   ]
 }
