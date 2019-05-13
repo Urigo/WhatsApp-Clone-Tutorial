@@ -1,0 +1,79 @@
+Despite using GraphQL throughout all our app, we will soon meet the need to use some external API and chances are it will be REST.
+Our first idea could be to bridge the REST API through GraphQL, reproposing the very same API to the client. This approach is wrong, because our first concern should always be to provide the client with ready to use data in the best possible shape.
+The client don’t need to know that our GraphQL API is backed by a REST API, it doesn’t have to pass headers required by the underlying API or do any kind of special considerations: our backend should take care of everything.
+
+## Retrieve a profile picture from a REST API
+
+In this chapter we will discuss how to use an external API called Unsplash to retrieve random profile pictures for the users who didn’t set any.
+
+Start heading to https://unsplash.com/developers and clicking on “Register as a developer”. After registering you will have to create a new app: take note of the Access Key because we’re going to need it.
+
+If you look at the Documentation (https://unsplash.com/documentation#get-a-random-photo) you’ll notice that in order to retrieve a random photo we have to query the /photos/random endpoint (GET method). We also have to pass some headers for the authent
+cation and some params for the search term and the orientation.
+
+On the browser we would probably use the fetch api, but since on we node we would need a polyfill it’s better to just use a full fledged library like axios:
+
+    yarn add axios
+    yarn add -D @types/axios
+
+Before we start implementing, we want to create some typings for our endpoint, because ideally we would like to be aided by those typings during the development.
+In order to do so we can use a Chrome extension like Advanced Rest Client to retrieve the response.
+Set the Method to GET, the Headers to Authorization: 'Client-ID 4d048cfb4383b407eff92e4a2a5ec36c0a866be85e64caafa588c110efad350d' and the Request URL to https://api.unsplash.com/photos/random, along with the params to query: 'portrait' and orientation: 'squarish'.
+Copy the response, create a new file called types/unsplash.ts in your vscode editor and run the command “Past JSON as Types” (you need to install the Past JSON as Code extension and press CTRL+P to open the run command prompt). That would be enough to automatically create the typings for the random photo endpoint.
+
+Now we can finally implement the REST API call in our picture resolver:
+
+{{{ diffStep "12.1" module="server" files="schema/resolvers.ts" }}}
+
+In order to test it, we have to remove the picture from one of the users and re-run the server with the `RESET_DB=true` environment variable:
+
+{{{ diffStep "12.1" module="server" files="db.ts" }}}
+
+
+## Track the API
+
+Even if our typings are working pretty well so far, not all REST APIs are versioned and the shape we’ve got from the server could potentially change.
+In order to keep an eye on it we could use the safe-api middleware in order to check for abnormal answers coming from the server and log them. We can also generate the typings automatically based on the response we get.
+First let’s install the safe-api middleware:
+
+    yarn add @safe-api/middleware
+
+Then let’s use it inside our resolver:
+
+{{{ diffStep "12.2" module="server" files="schema/resolvers.ts" }}}
+
+Now launch the client in order to retrieve the picture field multiple times.
+
+If you look inside the logs directory you will notice that it generated some graphql schema to represent the REST API. You will notice that each time we call the REST endpoint it generates a new schema, because a single response isn’t generic enough to account for all possible responses. Ideally safe-api should be able to average multiple esponses in order to generate the least generic schema matching the given responses.
+
+Now we need to remove `types/unsplash.ts` and generate some Typescript typings out of the schema. Do do so we can use the graphql-code-generator:
+
+{{{ diffStep "12.3" module="server" files=".gitignore, codegen.yml" }}}
+
+    yarn codegen
+
+
+## Apollo DataSources
+
+We’re not done yet, there is still room for improvement. Instead of using axios, we could use Apollo’s Data Sources and take advantage of the built-in support for caching, deduplication and error handling.
+
+    yarn remove axios @types/axios
+    yarn add apollo-datasource-rest
+
+{{{ diffStep "12.4" module="server" files="schema/unsplash.api.ts" }}}
+
+We created the UnsplashApi class, which extends RESTDataSource. In the constructor you need to set the baseUrl (after calling super() to run the constructor of the base class). You also need to create a willSendRequest method to set the authentication headers for each call. Then it’s simply a matter of creating a getRandomPhoto method to perform the actual REST API call. Instead of calling axios you will have to call the get method of the class (which in turn gets inherited from its RESTDataSource base class): the API is very similar to the axios one.
+
+In order to access the data source from the resolvers we need to tell Apollo to put them on the context for every request. We shouldn’t use the context field, because that would lead to circular dependencies. Instead we need to use the dataSources field:
+
+{{{ diffStep "12.4" module="server" files="index.ts" }}}
+
+Now we need to update the typings for our context and run the graphq-code-generator again:
+
+{{{ diffStep "12.4" module="server" files="context.ts" }}}
+
+    yarn codegen
+
+Now it should be pretty easy to modify our resolver in order to use our just created datasource:
+
+{{{ diffStep "12.4" module="server" files="schema/resolvers.ts" }}}
