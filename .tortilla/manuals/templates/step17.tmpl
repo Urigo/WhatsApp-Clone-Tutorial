@@ -1,0 +1,655 @@
+In this part of the tutorial we're going to do a bit different work than in previous chapters. We'll analyze the code instead of writing it, including both the API and the web application.
+
+## API Performance
+
+First, let's start with the GraphQL API.
+
+### Finding bottlenecks
+
+In order to implement fixes and do improvements we need to understand which part of the API needs help. There's still not many tools around GraphQL in terms of analytics and inspection but there's one highly useful, it's called **Apollo Engine**.
+
+Since we're going to use it, you need to register an account at [engine.apollographql.com](https://engine.apollographql.com/) and create a service. Please then follow [the "How to configure an Apollo project" instructions](https://www.apollographql.com/docs/platform/schema-registry/#using-the-schema-registry).
+
+Once you're ready, please start the server and run this command:
+
+    $ apollo service:push
+
+To collect the data, let's play with the client app for some time. After that, go to Engine's website.
+
+Here's one of graphs with timing of an operation. We can understand when each resolver takes place and how much time it consumes. Some resolvers happen in parallel.
+The `< 1ms` says it was a very simple computation or an element resolved immediately.
+
+We find it very useful to understand how operation behaves.
+
+![Resolvers](../../../assets/step17/img-01.png "Resolvers")
+
+Let's go through an entire query to find fields fetched multiple times. The most obvious field is `isMine`. We see it's computed twice for almost 4 and 5 milliseconds.
+In order to find out what does it mean, we need to look at the code. The resolver gets the currently logged in user from the `Auth` service and its `currentUser`. Each time the method is invoked, a query to PostgreSQL is made. We ask for that data multiple times, once in `lastMessage` and also in every message from the list.
+
+We could deduplicate the SQL queries! In order to do that the most obvious library that pops to my mind is Dataloader.
+
+Let's install the package and discuss it afterwards:
+
+    npm install dataloader
+
+The Dataloader is a library created and maintained by Facebook. It's main purpose is to turn equivalent requests into a single execution. Sounds like a perfect solution, right? It actually is.
+
+A short explaination of how Dataloader works.
+
+```ts
+async function fetchUser(id: number): Promise<User> {
+  // Resolves asynchronously, after less than 1s.
+  return db.users.findOne(id);
+}
+
+async function fetchUsers(ids: number[]): Promise<User[]> {
+  const users = ids.map(id => fetchUser(id));
+  return Promise.all(users);
+}
+
+const loader = new Dataloader(keys => fetchUsers(keys));
+
+async function main() {
+  const user1 = await loader.load(1);
+  const user2 = await loader.load(2);
+
+  // Later on user #1 is fetched again.
+  // It resolves immediately.
+  const member1 = await loader.load(1);
+}
+```
+
+Think of the Dataloader as a class that has a `Map` object in it, its keys are of course unique and each value is a `Promise`.
+Every time you ask for something, Dataloader looks for it in the `Map`. When there's already something, the `Promise` is returned but if there's none the provided function is invoked and a new `Promise` is created. This way equivalent requests share the same `Promise`.
+
+> It's important to know that the `Map` object grows until the DataLoader is released, that's why it's recommended to keep `Dataloader` in GraphQL's context.
+
+Let's implement `Dataloader` in our `Database` service:
+
+{{{ diffStep "14.1" module="server" files="modules/common/database.provider.ts" }}}
+
+The key is created based on SQL statement and its values and we also turned off batching because it's important to execute SQL operations sequentially.
+There's also a new method called `query`, to execute SQL statements through Dataloader. It also reduces a boilerplate of asking for db client and executing a query every time we do SQL in resolvers and providers.
+
+Now we need to apply that change in all providers:
+
+{{{ diffStep "14.1" module="server" files="modules/users/users.provider.ts, modules/chats/chats.provider.ts" }}}
+
+Deduplication is done but the `currentUser` method does more than just that. It verifies the auth token extracted from a request's cookie. This could be avoided by an assignment to a private prop and a simple if statement.
+
+{{{ diffStep "14.2" module="server" }}}
+
+![Resolvers](../../../assets/step17/img-02.png "Resolvers")
+
+As you can see at the graph above, we reduced an execution time of `isMine` field from 4ms and 5ms to less than 1. That applies for all calls, all messages so it scales well and won't grow as list of messages increases.
+
+But there's more... We see `chat` field being computed over and over again. So again, let's repeat the same steps.
+The `Message.chat` resolver asks `Chats` service and its `findChatById` method which makes a SQL call.
+
+The deduplication logic, we introduced in the previous step, helps to immediately resolve all `Message.chat` fields except the first occurrence but there's still a space for improvements.
+
+The `Query.chats` resolver is invoked before the `Message.chat` which means at this point, we already have knowledge about the chats.
+
+Let's implement a caching logic for chats so we could reuse them. We will do it in few steps.
+
+First, because we're going to use `Dataloader`, `Chats` class should have private and public API.
+
+{{{ diffStep "14.3" module="server" }}}
+
+The private method is responsible for quering data from the database but the public one is to allow communication between the service and its consumers.
+It's also there so we could switch to using Dataloader later on.
+
+We did that to `findChatsByUser` but there are more:
+
+{{{ diffStep "14.4" module="server" }}}
+{{{ diffStep "14.5" module="server" }}}
+
+> Because those private methods are just to query data, make sure they all return untouched `row` object.
+
+Now's the most interesting part, Dataloader.
+
+{{{ diffStep "14.6" module="server" }}}
+
+We introduced `ChatsKey` that is a union type, to standarize the input value. Those helper methods like `isChatsByUser` and `isChatByUser` are there to decide what should be fetched.
+
+In every public method that we previously changed, there's now Dataloader in use but that's not entirely what we're trying to achieve.
+
+The caching mechanism is not yet completed. We deduplicate requests but in some cases, we ask for chats that are already there, so we need to intercept our dataloader logic and introduce caching.
+
+{{{ diffStep "14.7" module="server" }}}
+
+Whenever we ask for a single chat that is available, it's being resolved right away but we still need to write data to the cache.
+
+{{{ diffStep "14.8" module="server" }}}
+
+Let's look at charts in Apollo Engine.
+
+![Resolvers](../../../assets/step17/img-03.png "Resolvers")
+
+We cut off `Message.chat` to less than 1ms.
+
+The `Chat.name` and `Chat.picture` resolvers share the same logic and since Database service is wrapped with DataLoader, we make a single SQL query. Unfortunately, it's not visible on the graph.
+
+Let's summarize our work. **We made the GetChat operation almost 60% faster on average** and it's just based on one chat with one message. The number would be much much higher on a bigger scale.
+
+### Preventing issues
+
+The Apollo Engine has another interesting feature. It’s called Alerts. You set a threshold for all operations or a specific one and whenever it takes longer, you get a notification on Slack. But there’s a catch, you need to pay in order to unlock it.
+
+We’re working on something similar but entirely open-sourced. It’s an extension of ApolloServer that lets you track operations and get exactly what you would get from the engine but self-hosted.
+
+## UI Performance
+
+The part would be the User Interface and the web app in general.
+
+### Metrics
+
+There's a highly recommended and very comprehensive publication written by Philip Walton (Engineer at Google) called ["User-centric Performance Metrics"](https://developers.google.com/web/fundamentals/performance/user-centric-performance-metrics) that was an inspiration for this chapter. We’re going to talk in short about measuring render performance of a web application.
+
+Let’s base this chapter on real data. First, open the app and go to Performance tab of Chrome DevTools.
+
+![Record](../../../assets/step17/img-04.png "Record")
+
+Now click on “Start profiling and reload page”. After it’s done you should see the following:
+
+![All panels](../../../assets/step17/img-05.png "All panels")
+
+Right now it may not make a lot of sense, so we’re going to start with something basic.
+
+There’s many different kinds of charts but we will cover only few of them: Network, Frames, Timings and Main.
+
+Let’s check out the Timings section and explain few important performance metrics.
+
+- DCL - DOMContentLoaded Event
+- L - Onload Event
+- FP - First Paint
+- FCP - First Contentful Paint
+- FMP - First Meaningful Paint
+
+There’s also another one that is not visible on the timeline but also not less important, TTI - Time to Interactive.
+
+We will focus on FP, FCP, FMP and TTI.
+
+The primary difference between the two metrics is **First Paint** marks the point when the browser renders anything that is visually different from what was on the screen prior to navigation. By contrast, **First Contentful Paint** is the point when the browser renders the first bit of content from the DOM, which may be text, an image, SVG, or even a `<canvas>` element.
+
+The **First Meaningful Paint** should mark the point when something useful was rendered. It might mean an input box on Google, video player on YouTube or in our case, a list of chats.
+
+The **Time To Interactive** metric marks the point at which the application is both visually rendered and capable of reliably responding to user input.
+
+Now with all that knowledge we can move on to something more practical, the **Frames panel**. The main purpose here is to see what’s rendered at given time. In our case, the first paint was made after over 200ms, which is not a bad result at all but see that huge blank space next to it.
+
+The **Network section**, is going to help us out here and give some pointers of what might be a reason of it. It’s a timeline that explains when each request was made and how long it took to resolve.
+
+![Network section](../../../assets/step17/img-06.png "Network section")
+
+What do we see here? One of the first requests are js files and we need those to bootstrap and render the app. That’s the reason of the blank page.
+
+We could improve that by either Server-Side Rendering or using a Service Worker.
+
+### Rendering improvements
+
+#### Server-Side Rendering
+
+Implementing SSR means you run the app on server, before it’s being shipped to the client and the document’s content is not just `<html><body><app></app></body></html>` but an actual markup with all the components in it. Because it’s a part of the document, the browser can already display something meaningful and after js files are loaded, the app bootstraps on the client and it becomes interactive. There is one caveat. Wherever you ship the app it has to be able to run node js.
+
+#### Store Rehydration
+
+When talking SSR it’s worth to mention GraphQL and related technique called Store Rehydration. API calls are an important part of an application and plays a huge role in SSR.
+
+GraphQL operations are called once components are mounted which means the cache is filled up and why not reuse it on client.
+
+How would it work? Data is extracted from the apollo’s cache and passed within a document. After it’s received by the browser, the app runs and so does the Apollo Client. While it happens we look for the data and fill up the cache. Now whenever a component calls a GraphQL operation, the result is already in the cache and resolves immediately.
+
+#### Service Worker
+
+Another approach is a bit different. By using a Service Worker, we’re able to control and cache requests, including js files, images etc. On the first visit, the app loads exactly the same as without SSR but the next visits are a bit faster. It’s because the Service Worker is registered after you close the app and of course we can’t cache things that weren’t fetched yet.
+
+Both techniques are not mutually exclusive and we highly recommend to use both.
+
+![Main section](../../../assets/step17/img-07.png "Main section")
+
+The next section we’re going to talk about is the **Main panel**, a flame chart of activity on the main thread. You see those blocks? They represent an event, the wider it is the longer it took. One of the most important things to remember is to avoid long events since they block the thread.
+The longest event on our timeline is the Evaluate Script event that involves `main.js`. The file contains all the libraries and the core functionality, those are needed to run the app. By making it lighter we would decrease the time of the first render.
+We already do something to reduce the bundle size, This technique we use is called code-splitting and it allows to split one piece of code into multiple files which are lazy loaded.
+It cuts off the size of the main bundle and the rest is loaded on demand, let’s say login page is in a different chunk than list of chats.
+
+### Tooling
+
+There’s one tool built into Chrome DevTools called Lighthouse that allows to measure, collect metrics and get helpful tips on how to improve the performance and where are the pain points.
+
+Here’s the example:
+
+![Lighthouse results](../../../assets/step17/img-08.png "Lighthouse results")
+
+Once your app is optimized you want to prevent regressions. Lighthouse has you covered! It may run as part of Continuous Integration and prevents deployment when key metrics regress or drop below a certain threshold.
+
+## Making the app feels instant
+
+Dealing with slow network can be hard so let's simulate that situation. After all, running the application on local host will always result in low response times.
+
+Luckily most browser come with a built in solution for that - we can simulate a slow network by defining the throttle level:
+
+![Throttling](../../../assets/step17/img-09.png "Throttling")
+
+If we will refresh the application, we should notice a significant slow down the first time we load each screen; about few seconds to load each of them. To ensure that this is really caused by a slow network and not by anything else, we can open the dev-tools of our browser (let’s assume you use Chrome) and under the `network` tab we should notice the network activity times.
+
+> More information about monitoring network activity and throttling it using the Chrome’s dev-tools can be found in [the official dev-tools docs page](https://developers.google.com/web/tools/chrome-devtools/network/).
+
+To solve these issues there are a couple of changes we’re gonna make in the way we fetch and manage data.
+
+### Optimistic UI
+
+As you know, pretty much in all cases, everything in Apollo flows through its cache. If a requested data is in there, a query is resolved right away. Mutations are a bit different, they have to reach the server every single time. Seems like nothing we can do about it but fortunately we can simulate the mutation, predict the result and make Apollo treat it as a temporary data. Which means, the app’s state and all components are updated and the change is visible instantly after it’s made.
+
+In case of the WhatsApp clone, whenever a new message is sent, we will see it right away, on the screen, doesn’t matter if the network is low or even super fast. You may experience the similar behavior on Facebook’s Messenger.
+
+
+```graphql
+  mutation AddMessage($chatId: ID!, $content: String!) {
+    addMessage(chatId: $chatId, content: $content) {
+      ...Message
+    }
+  }
+```
+
+```graphql
+  addMessage({
+    variables: { chatId, content },
+    optimisticResponse: {
+      __typename: 'Mutation',
+      addMessage: {
+        __typename: 'Message',
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date(),
+        isMine: true,
+        chat: {
+          __typename: 'Chat',
+          id: chatId,
+        },
+        content,
+      }
+    },
+    update: (client, { data: { addMessage } }) => {
+      writeMessage(client, addMessage);
+    },
+  })
+```
+
+We used words “predict” and “simulate”, what if the mutation behaves differently or what’s more interesting, it fails. Apollo handles that as well. The “real” response overwrites the fake one and the store is reverted back to the original state.
+
+### Prefetching data
+
+Another technique but with a bit different purpose is about fetching data in advance. In some situations, you might be able to predict which page/component is going to be entered next.
+
+Let’s base it on a real example. The WhatsApp clone has a page with a list of chats. The component that represents the page, calls a GraphQL operation to fetch that list. Right now, when user clicks on one of the chats, he’s redirected to a partially empty page because of the ongoing GraphQL request. What if we could fetch that data in advance? That’s what this technique is about. We could predict user’s next move based on a simple mouse event or even by using Artificial Intelligence and data collected by Google Analytics, so whenever the move actually happens, the data is already in the cache.
+
+{{{ diffStep "15.1" module="client" files="src/components/ChatRoomScreen/index.tsx" }}}
+
+We created the `useGetChatPrefetch` hook that gets ApolloClient instance through `useApolloClient` and returns a function to prefetch data. In this case we request `GetChat` operation. Because Apollo deduplicates queries, we won't make multiple http calls, we're safe.
+
+The actual usage of `useGetChatPrefetch`, happens on `mouse entered` event:
+
+{{{ diffStep "15.1" module="client" files="src/components/ChatsListScreen/ChatsList.tsx" }}}
+
+Now, the same but with the list of users:
+
+{{{ diffStep "15.1" module="client" files="src/components/ChatsListScreen/AddChatButton.tsx" }}}
+{{{ diffStep "15.1" module="client" files="src/components/ChatsListScreen/ChatsList.tsx" }}}
+
+### Splitting and Deferring Queries
+
+Prefetching is an easy way to make your applications UI feel faster. You can use mouse events to predict the data that could be needed. This is powerful and works perfectly on the browser, but can not be applied to a mobile device.
+
+One solution for improving the UI experience would be the usage of fragments to preload more data in a query, but loading huge amounts of data (that you probably never show to the user) is expensive.
+
+Another solution would be to **split huge queries into two smaller queries**:
+
+- The first one could load data which is already in the store. This means that it can be displayed instantly.
+- The second query could load data which is not in the store yet and must be fetched from the server first.
+
+This solution gives you the benefit of not fetching too much data, as well as the possibility to show some part of the views data before the server responds.
+
+This could be used in our messaging app to load chat’s information and messages separately. This way we will see the title and the image instantly, because it’s already in the cache but messages will be loaded afterwards. UX will benefit a lot.
+
+There’s also something very similar conceptually to Query Splitting but instead of separating queries we keep everything in one operation and annotate the parts that should be deferred. The annotation is, of course a directive and it’s called **`@defer`**.
+
+Once the `@defer` is used, the server returns an initial response without waiting for deferred fields to resolve, using null as placeholders for them. Then, it streams patches for each deferred field asynchronously as they resolve. Thanks to that, we maintain one operation but decide how it behaves.
+
+> Right now, this feature is not well supported in Apollo Server so we don’t recommend to use it yet. Keep it on mind though.
+
+### Dealing with rendering issues
+
+The most naive thing we can do to start noticing performance issues would be loading TONS of data to our app, and make sure that each view is absolutely overwhelmed with information. This way performance issues will start rising above the surface pretty quickly. To do that, we will edit the `resetDb()` method on the server so it can generate large quantities of data. The most comfortable way of controlling that behavior would be through an environment variable that will tell the reset method how much iterations it should run. The more iterations, the more data would be fabricated:
+
+{{{ diffStep "15.10" module="server" }}}
+
+It’s important to note that we’ve generated the data in a very specific way where a single user will be the center of the network of data. This way when we log in with that user, we should see our views packed. If it wasn’t for that we would have just had large quantities of data in the DB, but none of it would appear to the end-user.
+
+Now, we will restart the server and this time run it differently. We will provide `FAKED_DB` with a value of `100` which should connect us to 100 messages per single view:
+
+    RESET_DB=true FAKED_DB=100 yarn start
+
+Now make sure that the application is running and log-in with the first user of Ray Edwards using the credentials:
+
+    username: ray
+    passowrd: 111
+
+Now try to navigate around between the `ChatsScreen` and `ChatBoxScreen`. You’ll notice that each transition takes a long time until it shows the data. It’s obviously something which is related to rendering and not data transportation, because the slowdown also happens the second time you visit a view, a point where the fetched data should have already been stored by Apollo in cache. So we’ve already detected one performance issue we should deal with.
+
+### Pagination
+
+To solve it, there are couple of changes we’re gonna make in the way we ask for data, messages will be fetched dynamically based on our scrolling position.
+
+With these changes, the requests will be splitted into smaller chunks, and React DOM won’t have to deal with a lot of data the first time it loads. There are few challenges that may arise from this implementation:
+
+- Representing queries in a way that they can be loaded in chunks
+- Sending requests and updating the view dynamically
+- Maintaining updates from subscriptions
+
+To start with, we will first take on the task of improving initialization times. We will release the pressure by fetching only the first 20 messages. This way when we visit a chat, it should be loaded faster.
+
+For that we're going to implement cursor-based pagination. We will add `after` and `limit` arguments to `Chat.messages` that could be used to fetch a specific snapshot of available messages.
+
+- `after` is optional and marks the point where the last fetch ended (what is the last element of a received list)
+- `limit` is required, defines amount of data
+
+A common design pattern for fetching data snapshots from a GraphQL back-end is called [Relay](https://facebook.github.io/relay/docs/en/graphql-server-specification.html). Relay provides a robust solution which is suitable for things like search engines.
+
+We will define our own version of it.
+
+{{{ diffStep "14.9" module="server" }}}
+
+The `MessagesResult` is built of:
+
+- `cursor` - marks the end of a fetched list
+- `hasMore` - tells if there's more data to ask for
+- `message` - has the same type as `Chat.messages` previously had
+
+Because the cursor marks the edge of received data, it has to be something we could use while sorting. The most obvious choice is the date of creation, so `created_at` column of `messages` table.
+
+It's stored as `YYYY-MM-DD HH:mm:ss` but we want to expose it as something easier to work with, let's say a `number`.
+
+In order to do it quickly, let's add `date-fns` package:
+
+    npm install date-fns
+
+It has `format` method that will help us to do conversions.
+
+We need to the logic of `Chats.findMessagesByChat` method.
+
+{{{ diffStep "14.11" module="server" }}}
+
+Because the order of creation matters, messages are selected quite differently than before, we keep selecting all columns but records are ordered by the date of creation.
+
+There's an interesting thing related to the cursor. If it's provided, we query for only those messages that happened before our cursor. This way we have a valid direction, fetching more messages means fetching older records.
+
+The last message in the list becomes of course the `cursor`.
+
+In order to calculate `hasMore` we need to apply the same conditions as above but with `LIMIT 1` and see if we get a result.
+
+Since the API part is done, let's take care of something much more complicated, which is always the UI...
+
+Let's plan it first. We know we want to fetch more messages while scrolling up. That means, Infinite Scroll with a corresponding request each time we hit the top. Because we implemented prefetching, we need to know what's the `limit`. React's Context might be helpful here. There was, of course, the change in GraphQL Schema we need to take care of too.
+
+### Apply schema changes
+
+Since we know what the plan is, let's start with schema changes. The `Chat.messages` is no longer a list, it's an object now.
+
+{{{ diffStep "15.6" module="client" }}}
+
+Now we need reflect those changes in generated hooks by running:
+
+    yarn codegen
+
+Okay, let's move on!
+
+### Infinite Scrolling
+
+Now this Infinite Scroll thing. The core concept is to ask for more data, once a user's scrollbar hits the top edge of the screen.
+
+{{{ diffStep "15.2" module="client" }}}
+
+Our `useInfiniteScroll` hook requires:
+
+- `ref` is a reference of a HTML element
+- `onLoadMore` calls the part component back and asks for data
+
+We used `useEffect` to add and remove a scroll event listener. The function lives as long as `ref` and `onLoadMore` stay the same, that's because we simply make use of them in `handleScroll` function. The `handleScroll` function calls `onLoadMore` when a user scrolled to the top.
+
+It all looks fine at first, but we still need to prevent calling back once fetching is in progress.
+
+{{{ diffStep "15.3" module="client" }}}
+
+That's why `isFetching` state is necessary but as you can tell, we don't set it to `false`.
+
+{{{ diffStep "15.4" module="client" }}}
+
+We want the consumer of the hook to tell it when fetching is finished, that's why we expose the state with `stopFetching` function.
+
+The next issue that appears right away is related to the case when there's no more data to fetch.
+
+{{{ diffStep "15.5" module="client" }}}
+
+Pfff... The hook part is done!
+
+### Pagination
+
+Pagination is partially implemented thanks to Infinite Scrolling but the thing we need to still apply is React's context. It will be a central place of storing `limit` and `after` values, so they could be shared across multiple components and not passed directly from one to another.
+
+{{{ diffStep "15.7" module="client" }}}
+
+We implemented three things:
+
+- `PaginationContext` is simple, it stores the values but also allows to set a new one for `after` or even bring it all back to the initial state.
+- `usePagination` hook is there so components could use `PaginationContext` and to make sure we reset it when component unmounts.
+- `ChatPaginationProvider` provides the logic and core functionality
+
+Since the pagination is almost ready, let's make use of it in `useGetChatPrefetch` hook and `ChatRoomScreen` component.
+
+{{{ diffStep "15.8" module="client" }}}
+
+This won't work yet because there's nothing that creates the context.
+
+{{{ diffStep "15.9" module="client" }}}
+
+We had to split the `ChatRoomScreen` into two pieces. One that includes `ChatPaginationProvider` and produces `chatId` and the other that keeps pretty much everything else. This way the tree of child components, starting from `ChatRoom` share the same context.
+
+### Fetching more messages
+
+Everything is set up, we can now move on and consume the `useInfiniteScroll` in the `MessagesList` component.
+
+{{{ diffStep "15.10" module="client" }}}
+
+We added the `LoadingMore` component with *Loading more messages...* text in it that pops out when fetching is in progress.
+Because the `MessagesList` is not responsible of quering data we don't know exactly when it's completed but we can assume, it happens once the length of `messages` changes.
+We also pass `onLoadMore` and `hasMore` props to the parent component and the `useInfiniteScroll` uses `MessagesList` as the element we're going to scroll in.
+
+There's also one more thing that could be turned into a hook, it's the logic responsible for scrolling to bottom of the page, every time `messages` changes.
+
+{{{ diffStep "15.11" module="client" }}}
+
+We also added some extra functionality there. Because we don't want to scroll to bottom when a new message is added, the function returned by `useAdjustedScroll` accepts now an argument.
+
+We did the `MessagesList`, now let's move onto real data and the `ChatRoom` component.
+
+{{{ diffStep "15.12" module="client" }}}
+
+As you see above, every time the `MessagesList` asks for more messages, the `after` changes its value to `chat.messages.cursor` which means that's a new "end" of the list and we need to fill it up.
+
+Right now we just have a logic and a place to do it but we still need to make a GraphQL call.
+
+Fortunately, Apollo lets you do pagination with a method called `fetchMore`. You need to specify what query and variables to use for the update, and how to merge the new query result with the existing data on the client. How exactly you do that will determine what kind of pagination you are implementing, in our case it's cursor-based.
+
+But there's a catch!
+
+It's related to how Apollo stores query results in cache. When we update the variables, in our case it's the `after` that changes quite a lot, a new record is created that is totally unrelated to the original query. That's because Apollo uses a combination of variables and query string to produce a key. 
+
+An example:
+
+
+```graphql
+{
+  query getUser($id: ID!) {
+    user(id: $id) {
+      name
+    }
+  }
+}
+```
+
+The result of `getUser` query will be saved under `user({"id":2})` key.
+
+This is a huge problem, it breaks imperative store updates but that's why `@connection` directive exists. It directs Apollo to use a stable store key for paginated queries, so every `useQuery()` or `fetchMore()` is being placed in the same space.
+
+With all that knowledge, let's implement the last puzzle piece!
+
+{{{ diffStep "15.13" module="client" }}}
+
+As you see, we mutate the store as usual and we put fetched messages before the existing ones. Remember, it's from older to newer.
+
+### Looking at the bundle size
+
+We can't of course forget about one of the most important aspects of optimization, the size of the application. As bundle size increases, both the parsing time and the time of the request takes longer. 
+
+How can we check what libraries and source files are shipped within the produced bundle?
+
+There are many tools that analyze it for us but we're going to use only one of them, just for educational purpose.
+
+      $ yarn add -D source-map-explorer
+
+We're going to add the `size` npm script in which we point the `source-map-explorer` to transpiled js files.
+
+{{{ diffStep "15.14" module="client" }}}
+
+Let's see it in action, run:
+
+    $ yarn build && yarn size
+
+That's what you should see:
+
+![Source Map Explorer](../../../assets/step17/img-10.png "Source Map Explorer")
+
+It's interactive so you can dive deeper and deeper into those blocks but in general it shows what libraries and files are included in the produced output with their size(not minified and not gzipped).
+
+![Source Map Explorer](../../../assets/step17/img-11.png "Source Map Explorer with moment highlighted")
+
+For example, we see that `moment` takes almost _53.49KB_ which is enourmous. In fact we only use its `format` method. The reason is that the library is not well tree-shakable. There are plugins for webpack (or any other build tool) that helps with it but we're going to use an alternative instead. We're going to replace it with `date-fns`.
+
+{{{ diffStep "15.15" module="client" }}}
+
+Now when you run:
+
+    $ yarn build && yarn size
+
+You should see the following results.
+
+![Source Map Explorer](../../../assets/step17/img-12.png "Source Map Explorer with date-fns")
+
+The bundle size is a bit smaller and `date-fns` takes only _8.93KB_ which in comparison to _53.49KB_ is a significant change!
+
+## Load testing
+
+Load testing, in short, is about finding the limit of an application and figure out how to push it even more. We simulate a stressful behavior and apply that to the server until it crashes. We’re trying to answer the question of how the api deals with a pressure.
+
+When to do load testing?
+I would say at least before and after major changes, when pre-launching and just from time to time to prevent regressions.
+
+Before doing load testing, we need to prepare a bit first. Right now we use `ts-node` to run the server but it would be faster to run it directly using `node`, just to avoid on-the-fly transpilation of TypeScript files.
+
+In order to do it, we need to define the `outDir` in `tsconfig.json` and add a build step.
+
+{{{ diffStep "14.12" module="server" }}}
+
+Next, the script to actually run the server:
+
+{{{ diffStep "14.13" module="server" files="package.json" }}}
+
+Once it’s ready, we can move on to tooling.
+
+### Artillery
+
+Artillery is an open-source load testing and functional testing toolkit. It’s API is vast but we will focus on the core part of it which is relevant to this chapter. Artillery is available as a npm package:
+
+    $ yarn add -D artillery
+
+The only step to use Artillery is to set it up. We will create the `artillery.yml` file, like this:
+
+{{{ diffStep "14.15" module="server" }}}
+
+As you can see, the config file is built of two sections. First one is named `config` and it defines what’s our target and how the traffic should look like. We used one phase but it could have many. The `duration` parameter is to define how long the phase should take. The `arrivalRate` defines how many virtual users per second are going to hit the target and the `rampTo` directs Artillery to increase this number up to 20, at the middle of the phase.
+
+The next section, called `scenarios`, is all about the actual requests. In our case, we want to authenticate user, submit a new message and fetch an entire list of chats with their messages at the end. Artillery shares cookies between request of the same virtual user, keep that on mind.
+
+We used Ray as the user and fairly similar operations to what the client app sends. That should closely represent the actual usage of the API.
+
+Everything is fine with that config but we need to find the limit, to push even more. That's why we'll also add a second config with a bit more heavier traffic, something to simulate the more real life environment. It's pretty much the same setup except phases. First, we "warms up" the server for 2 minutes, same amount of times goes next with double the traffic, then we keep it for 5 minutes. At the end, we want to crash the server so we send nearly 100 virtual users per second for an entire minute. This way we know when it cracks.
+
+{{{ diffStep "14.16" module="server" }}}
+
+Once everything is ready, let's add npm scripts, one for a normal traffic and a second with the much more users:
+
+{{{ diffStep "14.17" module="server" }}}
+
+You probably noticed that we stream the output to the `loadtest.log` file and that's just to read the results in a bit more pleasent way, than in the terminal.
+
+Let’s start the server and run artillery:
+
+    $ yarn build && yarn start
+    $ yarn loadtest
+
+You’ll see a loading indicator, might take a while but when it completes, you should see something like this in `loadtest.log` file:
+
+```
+Summary report @ 15:00:58(+0200) 2019-05-30
+  Scenarios launched:  1506
+  Scenarios completed: 1506
+  Requests completed:  4518
+  RPS sent: 37.35
+  Request latency:
+    min: 3.5
+    max: 115.7
+    median: 18.6
+    p95: 54.4
+    p99: 66.2
+  Scenario counts:
+    Sign in, send a new message and fetch a list of chats: 1506 (100%)
+  Codes:
+    200: 4518
+```
+
+We ran the scenario 1506 times, all were completed and the total number of requests was 4518.  The **RPS** means requests per second.
+
+The metrics in **Request latency** are in milliseconds. We see what was the shortest request and so on. These **p95** and **p99** values mean that for 95% of virtual users, the latency was 54.4ms or lower, for 99% it was 66.2ms. All requests finished with 200 status code.
+
+You might also automate that process and integrate Artillery CLI with CI/CI systems or even send metrics to external monitoring systems.
+
+### Apollo Engine
+
+Let's bring back the Apollo Engine once again. It will be helpful to analyze the load testing results.
+
+On the **Metrics** page, you will see the following view:
+
+![Metrics](../../../assets/step17/img-13.png "Metrics")
+
+Click on the filter and set a custom date range to match the time you were load testing. Just to filter out other requests.
+
+![Filter](../../../assets/step17/img-14.png "Filter")
+
+By default, Apollo Engine counts all operations, but you can pick the one you’re interesting in. We don’t do it and inspect them all.
+
+![List](../../../assets/step17/img-15.png "List of operations")
+
+On the main part of the view, you should see “Last day overview” panel.
+
+![Overview](../../../assets/step17/img-16.png "Last day overview")
+
+As you can see, all operations we ran are listed there and no error occurred.
+
+![Request Rate](../../../assets/step17/img-17.png "Request Rate Over Time")
+
+Next section shows the Requests Per Minute (rpm) metric over time. It’s useful to understand which operations are sent more often than others.
+
+![Request 1](../../../assets/step17/img-18.png "Request Latency Over time")
+![Request 2](../../../assets/step17/img-19.png "Request Latency Distribution")
+
+Last two panels are there to understand at what number of requests the latency increases and to show the correlation between them. We see a distribution of the processing time (the horizontal axis) and the number of operations. It also has p50, p75, p90 and p99 marks on it. 
