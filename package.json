@@ -22,7 +22,6 @@
     "fullstack",
     "websocket",
     "socketio",
-    "rest",
-    "rest api"
+    "modules"
   ]
 }
