@@ -1,0 +1,377 @@
+This chapter is focused entirely on how to organize a GraphQL API. By far, our project's schema looks simple and keeping SDL and resolvers in two files is really enough.
+
+## Issues we face when GraphQL API grows
+
+Usually, every app starts small and the difficulty of maintenance grows while features are being implemented. I believe that you should always start small and see how a project involves. You could look up many articles about best practices of organising a project but they bring no benefit when your project is small. You don't want to jump between files in order to find what you're looking for, it should be intuitive. I agree a proper folder structure helps but if your schema has 100 lines of code then it makes no sense to split it into 5 files with 20 LOC each. The schema is so small that it won't hurt you when you hit the wall and separation will be necessary but until it happens you can easily move on with the project.
+
+Bigger project means more people, more people means teams. In the current state of the app, they might interrupt each other and that eventually affects productivity.
+Lack of separation makes the schema harder to maintain, especially once it grows rapidly.
+
+## That's why modularity is a thing!
+
+In order to improve and solve those issues we would have to split an API into many pieces.
+Those might be files, even folders, doesn't really matter because the goal is to keep relevant chunks of code in one place, conceptually called module.
+
+If done right, one team won't disturb another and it also helps to understand an entire codebase just by looking at those modules or even learn a feature because everything related to it is within a single module.
+
+There's also a very important aspect, reusability. Most APIs have something in common, the first thing that comes to mind is authentication and user mechanism in general.
+When working with modules, it gets easier to share those.
+
+## Many ways to organize an API
+
+GraphQL specification explains just the language and how to form an API. Managing codebase, that's on our side.
+
+Since we're talking about modularity, let's see possible implementations.
+
+The first thing on mind are files and folders. Putting relevant logic in a file won't scale well once we add more things, like business logic for example. Which means we need folders, that's for sure.
+
+Okay, so the next question, how to store SDL and resolvers. Do we want to have them stored together or keep them separated?
+
+I'm a big fan of the former because in schema-first approach the SDL is written first and you see exactly how to construct resolvers. The latter would require to jump between files or have them opened side-by-side.
+Another benefit shows up when you add, remove or just change part of a schema, less likely that you'll miss something.
+
+But as always, there are things you can't do with that approach.
+One that pops into my head right away is an IDE support… ?
+< guys, any ideas? >
+
+Let's talk about modularity in terms of SDL.
+We know how to define types in GraphQL but what if a type is a sum of many features?
+There two ways to do it. One is to use the `extend` keyword, another to define a type multiple type. Both gave the same effect, all is merged into one type after all.
+
+But there are few major differences.
+
+The `extend` keyword is obviously a part of the specification so IDEs and most tools support it. It feels more natural than the second option.
+
+Defining the same type multiple times is the opposite. It might feel odd, not many IDEs and
+tools support it so you have to add a library that handles it but on the other way you don't care if there's already a type or not, you just make sure there's one with proper fields, no matter what. It might also warn you when fields overlap.
+
+## Modularized schema
+
+There are couple solutions to help you modularize the schema and we will look at 3 of them.
+
+First, let's start by defining 3 modules:
+
+- common - things we want to share with all the rest
+- users - everything related to users
+- chats - core logic of WhatsApp
+
+### Using directories
+
+The simplest and most obvious solution would be to split what we have and move that into directories.
+
+Starting with common module. We need to create a folder at `/modules/common` and a `index.ts` file in it:
+
+{{{ diffStep "13.1" module="server" files="modules/common/index.ts" }}}
+
+You can see a pattern here, two things are being exported, one with type definitions and the other with resolvers. Why those `_dummy` fields? We want to use `extend` keyword, that require a base type and GraphQL doesn't accept empty objects.
+
+Now, let's do the same but with Users module:
+
+{{{ diffStep "13.1" module="server" files="modules/users/index.ts" }}}
+
+And Chats module:
+
+{{{ diffStep "13.1" module="server" files="modules/chats/index.ts" }}}
+
+Seems like modules are ready but we still need to create a Schema out of them.
+
+{{{ diffStep "13.1" module="server" files="schema/index.ts" }}}
+
+Because we moved everything from `resolvers.ts` and `typeDefs.graphql` files, those can now be removed.
+
+The last thing we need to adjust is the GraphQL Code Generator's config, in `codegen.yml`:
+
+{{{ diffStep "13.1" module="server" files="codegen.yml" }}}
+
+We no longer keep all type definitions in one place and all documents are wrapped with `gql` tag, the codegen is smart enough to find those.
+
+### Using Apollo Modules
+
+An alternative to the previous solution and far more interesting is a module feature of Apollo Server.
+
+Let's see how it all might look like when using Apollo Server's modules:
+
+{{{ diffStep "13.2" module="server" files="index.ts" }}}
+
+The `modules` of ApolloServer accepts an array of objects with `resolvers` and `typeDefs` properties. That's exactly what we exported and that's why we can use esmodules directly.
+
+Because we no longer use `schema.ts`, let's remove it.
+
+If you would run the server right now, you will see a lot of warnings about missing index signatures. It's definitely nothing to worry about and can be easily fixed by using `useIndexSignature` flag of codegen:
+
+{{{ diffStep "13.2" module="server" files="codegen.yml" }}}
+
+You might ask how is that different from what we have already implemented. The code is a bit simpler because the merging part is done by Apollo Server. We get some helpful messages when type's definition is missing but one of the modules was extending it and also when there are duplicates. Apollo Modules are very straightforward and basic but maybe that's all you really need in a project.
+
+### Using GraphQL Modules
+
+There's an another alternative option that forces good patterns and providess a nice to work with API. It's called GraphQL Modules.
+The main goal is to help organize an API and allow to develop it across multiple teams.
+
+    yarn add @graphql-modules/core
+
+Same as Apollo Server's modules, has useful warnings and messages but you can use it with any implementation of GraphQL server.
+
+```ts
+import { GraphQLModule } from ‘@graphql-modules/core';
+
+export default = new GraphQLModule({
+  name: 'common',
+  typeDefs,
+  resolvers
+});
+```
+
+It's a bit similar to what we have in Apollo Modules but as you probably noticed, it's wrapped within `GraphQLModule` class. 
+The class manages a business logic, SDL, resolvers and dependencies between modules.
+
+> An important thing to be aware of, GraphQL Modules encapsulates every module. To get a better understanding, think of it as CSS Modules.
+
+Now that you know some basics, let's implement the simplest of all modules:
+
+{{{ diffStep "13.3" module="server" files="modules/common/index.ts" }}}
+
+As we mentioned, there's no global context so we moved the common parts into Common module.
+
+Let's take care of other two modules and migrate `modules/users/index.ts` first:
+
+{{{ diffStep "13.3" module="server" files="modules/users/index.ts" }}}
+
+Just like with Common, we also moved related context but there's a totally new thing called `imports`. In order to let Users module see Common's contents (types, resolvers, context etc) we need to include it in the dependencies.
+
+Now `Chats` that depends on `Users` and `Common` modules:
+
+{{{ diffStep "13.3" module="server" files="modules/chats/index.ts" }}}
+
+Since every module is now a GraphQL Module, we can take care of how to use them in the ApolloServer.
+
+To make things easier, we're going to create a module that's called `Root` and represents our API.
+
+```ts
+export const rootModule = new GraphQLModule({
+  name: 'root',
+  imports: [usersModule, chatsModule],
+});
+```
+
+We want to pass `schema` and `context` to ApolloServer:
+
+```ts
+const server = new ApolloServer({
+  schema: rootModule.schema,
+  context: rootModule.context,
+  // ...
+```
+
+Now with all that knowledge, take a look at all changes at once:
+
+{{{ diffStep "13.3" module="server" files="index.ts" }}}
+
+#### Migrate Unsplash API to Chats
+
+We still make use of global context which won't work with GraphQL Modules. To be more specific, it's not the context definition itself but the thing that's being added by ApolloServer, Data Sources.
+
+The `RESTDataSource` is of course more than a class but in case of Unsplash API we won't loose any important features except the HTTP client. We're going to use `axios` instead:
+
+    yarn add axios
+
+We've got everything now so let's migrate UnsplashAPI class and move it from `schema/unsplash.api.ts` under `modules/chats`!
+
+{{{ diffStep "13.4" module="server" files="modules/chats/unsplash.api.ts" }}}
+
+There is no big differences between now and what we had before, the only thing that's changed is the way we make http requests.
+
+The `UnsplashAPI` can be now removed from `dataSources` and moved under Chats module's context:
+
+{{{ diffStep "13.4" module="server" files="index.ts" }}}
+
+{{{ diffStep "13.4" module="server" files="context.ts" }}}
+
+{{{ diffStep "13.4" module="server" files="modules/chats/index.ts" }}}
+
+#### Dependency Injection in GraphQL Modules
+
+The major feature of GraphQL Modules is the Dependency Injection. It's optional, you don't have to use it until it's really necessary. Even though WhatsApp clone doesn't need it yet, we're going to talk about DI and implement a simple thing, just for educational purpose.
+
+If you're familiar with Dependency Injection then you will get it straight away. If not, please read about it here or here (**links**).
+
+To start working with DI, we we need to install two packages:
+
+    yarn add @graphql-modules/di reflect-metadata
+
+Let's now adjust the context type and import `reflect-metadata` into the project:
+
+{{{ diffStep "13.5" module="server" files="context.ts" }}}
+
+{{{ diffStep "13.5" module="server" files="index.ts" }}}
+
+In short, Iependency Injection will instantiate classes, manage dependencies between them and so on and in addition to that, the GraphQL Modules allows to define when each provider / class should be created. We call it scopes.
+
+- Application scope - provider is created when application starts (default)
+- Session - providers are constructed in the beginning of the network request, then kept until the network request is closed
+- Request - creates an instance each time you request it from the injector
+
+Because our `UnsplashApi` doesn't have to be recreated on every request, we can easily use Application scope, which is the default. The `Injectable` decorator is just to attach some metadata to the class.
+
+{{{ diffStep "13.5" module="server" files="modules/chats/unsplash.api.ts" }}}
+
+Here's how to register the UnsplashApi provider in Chats module:
+
+{{{ diffStep "13.5" module="server" files="modules/chats/index.ts" }}}
+
+Please also take a look at `injector.get(UnsplashApi)` part. There's `injector` instance in every module's context that allows to consume providers and everything that is defined within DI. You simply pass a class / token to the `get` method and GraphQL Modules takes care of the rest.
+
+**What are the benefits of DI?**
+
+You can have a different implementation of Users based on the same interface. Maybe right now you're using PostgreSQL but at some point a project will be migrated to MongoDB. You could do it through GraphQL context, of course but with Dependency Injection, GraphQL Modules is able to tell you exactly what's missing and where. It reduces boiler plate because instantiation is done by the injector, code is loosely coupled. 
+
+Helps maintainability but also comes with few disadvantages. It's a bit complex concept to learn and what could be done on compile time (TypeScript) is moved to run-time.
+
+You might find DI useful while testing. Let's say you want to test a query that involves `UnsplashApi` provider, you simply replace it with a mocked version without touching the context or internals and you get the expected result every single time.
+
+We know there's only one provider by far, the `UnsplashApi`, but we're going to implement more and more in following steps.
+
+#### Continuing with DI
+
+We want to have everything easily accesible and DI helps with that so let's move on and continue migrating things.
+
+One of the shared objects is database connection and we're going to create a Database provider:
+
+{{{ diffStep "13.6" module="server" files="modules/common/database.provider.ts" }}}
+
+Things we did there:
+- Session scope was used, which makes sure our provider is created and destroyed on every GraphQL Operation
+- `onRequest` hook is called when a GraphQL Operation starts and we create a database connection in it.
+- `onResponse` hook is triggered when GraphQL Response is about to be sent to the consumer, so we destroy the connection there.
+- `getClient` method exposes the connection
+- `Pool` in constructor means we expect `Pool` to be injected into `Database` provider.
+
+Now we can define `Pool` token and register `Database`:
+
+{{{ diffStep "13.6" module="server" files="modules/common/index.ts" }}}
+
+{{{ diffStep "13.6" module="server" files="modules/index.ts" }}}
+
+#### Creating Users and Chats services
+
+It's not really recommended to put logic in resolvers so we're going to create a layer with business logic. A good example of that are Users and Chats modules so let's start with the former.
+
+We're going to create `Users` service and move `Query.users` logic into `findAllExcept` method:
+
+{{{ diffStep "13.7" module="server" files="modules/users/users.provider.ts,modules/users/index.ts" }}}
+
+A very interesting thing to notice is `@Inject()` decorator.
+
+```ts
+@Inject() private db: Database;
+```
+
+The @Inject, well... injects `Database` provider as `db` property so you don't have to use the `constructor`.
+
+Back to the Users service. It's very similar to what we did with the `UnsplashApi` so let's move on and implement more methods.
+
+{{{ diffStep "13.8" module="server" }}}
+{{{ diffStep "13.9" module="server" }}}
+
+Let's now implement `Chats` service with two basic methods:
+
+{{{ diffStep "13.10" module="server" }}}
+
+It looks exatly like `Users` and also has only `database` provider in it.
+
+We're going to move on and more things:
+
+{{{ diffStep "13.11" module="server" }}}
+{{{ diffStep "13.12" module="server" }}}
+{{{ diffStep "13.13" module="server" }}}
+{{{ diffStep "13.14" module="server" }}}
+{{{ diffStep "13.15" module="server" }}}
+
+#### Sharing PubSub
+
+One of things that are still in the context is `PubSub`. Because we're moving an entire business logic into a separate layer and as part of GraphQL Module's providers we need to make sure that PubSub is accessible throug DI.
+
+Let's register the PubSub and migrate resolvers:
+
+{{{ diffStep "13.16" module="server" }}}
+
+Now, we're going to use `PubSub` within `Chats` service:
+
+{{{ diffStep "13.17" module="server" }}}
+{{{ diffStep "13.18" module="server" }}}
+{{{ diffStep "13.19" module="server" }}}
+
+#### Implementing Auth service
+
+The last missing piece of our "context migration" journey is `currentUser` object. We're going to define the `Auth` service.
+
+{{{ diffStep "13.20" module="server" files="modules/users/auth.provider.ts" }}}
+
+It still needs to be registered and few resolvers in Users module have to be migrated:
+
+{{{ diffStep "13.20" module="server" files="modules/users/index.ts, context.ts" }}}
+
+Now let's use the Auth service in Chats:
+
+{{{ diffStep "13.20" module="server" files="modules/chats/index.ts" }}}
+
+Because we no longer need `db` instance in the context, let's remove it:
+
+{{{ diffStep "13.21" module="server" }}}
+
+Besides the `currentUser` method we're going to have two more, one to sign in and the other to sign up:
+
+{{{ diffStep "13.22" module="server" }}}
+{{{ diffStep "13.23" module="server" }}}
+
+#### Exposing server instance
+
+If you would run `yarn test` right now, you will see a lot of errors, every test will fail. 
+That's because we changed our setup but we didn't adjusted tests.
+
+We're going to change the setup of tests as well so whenever we do something on server it won't affect them. 
+Instead of exposing schema and context as we did before, we're going to base the tests on a ready to use ApolloServer instance.
+
+In order to achieve it, we need to separate ApolloServer from other server related logic.
+
+{{{ diffStep "13.24" module="server" }}}
+
+There's one thing that changed and might break our tests, this line fix it:
+
+{{{ diffStep "13.25" module="server" }}}
+
+Remember when I said about benefits of Dependency Injection? Here's one of them. 
+We create a function that overwrites the `currentUser` method so it always returns a specific user.
+
+{{{ diffStep "13.26" module="server" }}}
+
+Let's now migrate all tests and see how easier it is now to manage those. Because we use ApolloServer's instance, we don't need to understand how it's implemented.
+
+{{{ diffStep "13.27" module="server" }}}
+
+## Adjusting client
+
+We still need to update `codegen.yml` in the client app because of the changes we introduced in this chapter:
+
+{{{ diffStep "14.1" module="client" }}}
+
+## Many ways to write GraphQL
+
+We’re going to discuss what are the possible options of building GraphQL API and why schema-first approach was our choice.
+
+The main ingredient of a GraphQL API is, of course the schema. It’s built out of type definitions where each of them describes a piece of data, connections between them and how data is actually resolved.
+
+The way we develop all of it changes the way we work with the API. 
+
+We could define two main approaches:
+  - schema-first
+  - resolver-first
+
+The former means design comes before code, the latter vice-versa.
+
+In schema-first development you start with SDL, resolvers and code go next. Schema is sort of a contract between teams and also between frontend and backend. With schema-first approach it’s easier to cooperate, discuss and write a better API. Because the SDL is written upfront, the frontend developers can use a mocked version of it and start working on the product while the backend team does the API, in parallel.
+There are of course some pain points. Once schema is splitted into SDL and resolvers it’s hard to keep them in sync and that’s why things like GraphQL Code Generator were developed, to add type safety on top of all.
+
+The resolver-first approach is a bit different. The schema is defined programmatically, which usually means it’s more flexible and combined with TypeScript or Flow gives you type-safety out of the box.
+
+We think it’s less readable than having a SDL and there’s a lack of separation between schema and code which might be a blocker for some teams.
