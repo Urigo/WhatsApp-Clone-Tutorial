@@ -1,0 +1,156 @@
+The view and the functionality for updating the component's state when sending a message already exists. 
+The thing is that messages are not really being sent, we only update the memory in the client. 
+
+If so, how exactly can we send messages and store them in the DB? For this purpose we're gonna learn about GraphQL mutations - 
+a method for sending and applying mutations in our back-end.
+
+**What are GraphQL mutations?**
+
+If you have an API endpoint that alters data, like inserting data into a database or altering data already in a database, 
+you should make this endpoint a `Mutation` rather than a `Query`. 
+This is as simple as making the API endpoint part of the top-level `Mutation` type instead of the top-level `Query` type.
+
+It's often convenient to have a mutation that maps to a database create or update operation, return the same thing that the server stored. 
+That way, if you modify the data on the server, the client can learn about those modifications. 
+**A GraphQL mutation is like a GraphQL query, only with side effects**. 
+It's equivalent to GET (query) and POST/PUT (mutation) in the context of REST API.
+
+Below is a sample GraphQL mutation request:
+
+```graphql
+mutation AddMessage($chatId: ID!) {
+  addMessage(chatId: $chatId) {
+    id
+    contents
+    createdAt
+  }
+}
+```
+
+**How to implement a GraphQL mutation?**
+
+Since GraphQL is schema based, we will need to create a new type called `Mutation` in the `typeDefs.graphql` file. 
+In this chapter we want to have the ability to send messages, thus we will have a field named `addMessage` in the new mutation type:
+
+{{{ diffStep 5.1 module="server" files="typeDefs" }}}
+
+Note that our mutation resolver `addMessage` receives a `chatId`. This is because when adding a message, we should update both the messages collection, and the correlated chat document. Mutations are resolved exactly like any other type in our resolvers manifest. The new resolver should look like this:
+
+{{{ diffStep 5.1 module="server" files="resolvers" }}}
+
+In terms of testing, we will use a temporary solution for now to reset the DB each time we test a mutation. Since we make a modification in the DB, we need to make sure that each test is completely agnostic and doesn't affect one another, thus, we will export a `resetDB()` method from our `db.ts` module:
+
+{{{ diffStep 5.2 module="server" files="db.ts" }}}
+
+And we will use the `beforeEach()` test hook to reset the `chats` and `messages` collections:
+
+{{{ diffStep 5.2 module="server" files="tests" }}}
+
+Now we have the infrastructure set for sending a new message and we can start using it in our client.
+
+**How to use a GraphQL mutation?**
+
+Like in the previous chapters, we're gonna use a React hook so we can run a mutation more efficiently in a React.Component. 
+For this we're gonna use the [`useMutation()`](https://github.com/trojanowski/react-apollo-hooks#usemutation) react hook. 
+The first argument of the hook is the mutation string, and the second one is the [mutation options](https://www.apollographql.com/docs/react/api/apollo-client.html#ApolloClient.mutate). 
+We're gonna provide our mutation call with a single option called `optimisticResponse`.
+
+Optimistic response is a common pattern that will update the state of the component twice so we can have a better UX: First it updates the component's state with the predicted result, 
+and then it will update the state with the actual result.
+
+
+
+![optimistic_response](https://user-images.githubusercontent.com/7648874/54883302-859df900-4e9f-11e9-9eb7-a98108cd2482.png)
+
+
+This is how the component should look like:
+
+{{{ diffStep 8.1 module="client" }}}
+
+Note that unlike `useQuery()`, `useMutation()` returns a callback that will run the mutation only once called, NOT immediately. 
+Seemingly, everything works fine, but if you'll try to navigate from `ChatsListScreen` to `ChatRoomScreen`, send a message, and then go back, you'll see that the last message was not updated. 
+So why is that exactly?
+
+**Cache updating**
+
+As explained in the previous chapter, Apollo-Client will cache all the results in a data-store. 
+Later on, rather than re-fetching the data, it will look up for the result in the store and will serve it to you in case it exists.
+That means, that even though we ran the mutation and updated the data on the server, our data-store is still left behind and it needs to be updated as well, 
+otherwise Apollo-Client will see nothing wrong with the outcome.
+
+Apollo-Client stores the data in a hash, where the key represents the query and the value represents the retrieved result. 
+This means that the cache will need to be updated for:
+
+
+*   `chats` query - which we already did, without really diving into the reason behind it.
+*   `chat(chatId: $chatId)` where `chatId` is the chat that was just mutated.
+
+Indeed, a query will be duplicated for each and every distinct set of parameters. 
+So potentially our data-store can grow infinite amount of times, and we will need to take care of it and manage it correctly, so things won't get out of hand.
+
+To update a query, we will first export the `getChats` query to a separate file so it can be imported in the `ChatRoomScreen`. 
+We will define all our GraphQL assets under the `src/graphql` directory:
+
+{{{ diffStep 8.2 module="client" files="graphql" }}}
+
+And then we will read the memoized result from the store using [`client.readQuery`](https://www.apollographql.com/docs/react/features/caching.html#readquery), 
+update it, and then rewrite it using [`client.writeQuery`](https://www.apollographql.com/docs/react/features/caching.html#writequery-and-writefragment). 
+We can gain access to the client object via the `update` callback which will be triggered right after the mutation has been successfully executed. 
+This is how it should look like:
+
+{{{ diffStep 8.2 module="client" files="components" }}}
+
+Right now what happens is that we update a single chat document twice: Once for the `chats` query and another time for the `chat($chatId)` query. 
+This work is redundant and become more complex as we add more `chat` related queries. 
+To solve it, we can define and use a [GraphQL fragment](https://www.apollographql.com/docs/react/advanced/fragments.html).
+
+**Using Fragments**
+
+A GraphQL fragment is a shared piece of query logic.
+
+```graphql
+fragment NameParts on Person {
+  firstName
+  lastName
+}
+
+query GetPerson {
+  people(id: "7") {
+    ...NameParts
+    avatar(size: LARGE)
+  }
+}
+```
+
+It's important to note that the component after the `on` clause is designated for the type we are selecting from. In this case, `people` is of type `Person` and we want to select the `firstName` and `lastName` fields from `people(id: "7")`.
+
+Apollo maps the fragment ID to its retrieved data in the store. By default, Apollo will compose the fragment ID out of the entity type and the ID of the document. For example, for a `Chat` document with an ID of `7`, the fragment ID would be `Chat:7`. This behavior can be modified, but there's no need to.
+
+We will define the following fragments in our app:
+
+
+
+*   `Message` - represents a message
+*   `Chat` - represents a chat, **without its messages list**.
+*   `FullChat` - represents a chat, **including its messages list**.
+
+Once we define the fragments we can start embedding them in our queries. We will create a new directory path `src/graphql/fragments`, and inside we will create a dedicated fragment file for each fragment type: `message.fragment.ts`, `chat.fragment.ts` and `fullChat.fragment.ts`:
+
+{{{ diffStep 8.3 module="client" files="graphql/fragments" }}}
+
+And now that we have the fragments available to us, let's embed them in the relevant queries:
+
+{{{ diffStep 8.3 module="client" files="components, graphql/queries" }}}
+
+Similarly to query rewriting, we will use the [`readFragment()`](https://www.apollographql.com/docs/react/features/caching.html#readfragment) and [`writeFragment()`](https://www.apollographql.com/docs/react/features/caching.html#writefragment) methods in the same way to rewrite the fragments. When working with a fragment we need to compose its ID, just like explained earlier. The default mapping function called `defaultDataIdFromObject` can be imported from `apollo-cache-inmemory` and be used to specify the fragment that we would like to read/write. Accordingly, we're gonna replace all our query re-writings with fragments re-writings, as we don't need them anymore:
+
+{{{ diffStep 8.4 module="client" }}}
+
+
+----------
+TODO: Isn’t `chats.splice(0, Infinity, ...[ … ])` the same as `chats = [...]` ? 
+I see an explanation of apollo-cache but it makes you feel it’s the fragment that’s being cached, which is not true, it’s the object type.
+We shouldn’t use `defaultDataIdFromObject` directly from `apollo-cache-inmemory` but define it somewhere in our code and use that. It might change in the future and then we would have to do it in 500 files.
+I would explain a lot more than it is now, about the caching. It should be based on a simpler example and show that when an entity `Foo:1` is modified, the change reflects in all component. We should describe how it’s stored, as references and not real data and so on.
+
+TODO: Better fragments naming and convensions

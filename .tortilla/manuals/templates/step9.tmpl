@@ -1,0 +1,158 @@
+So far we've been just writing code. If there was an error we would most likely discover it during runtime. As a reminder, we've created a project which is based on TypeScript, but we haven't really took any advantage of TypeScript's type safety mechanism. Currently, the TypeScript compiler is configured to work on loose mode, so any object which is not bound to any type will be converted to `any` - a type which is compatible with any type of casting and will ignore type errors.
+
+So far it's been very convenient because we've only started to learn about building an app and the ecosystem around it, but for a long term project it's would be very handy to take a full advantage of TypeScript and not let it go under the radar. So where exactly are we missing type checkings? In the core of our project - when dealing with GraphQL documents.
+
+When we run a query, or a mutation, we wanna make sure that we use the received data correctly, based on its intended shape and form. For example, given the following GraphQL query:
+
+```graphql
+query Chats {
+  chats {
+    id
+    name
+    picture
+  }
+}
+```
+
+We want to have the following TypeScript type:
+
+```ts
+export type Chat = {
+  __typename?: "Chat"
+  id: string
+  name: string
+  picture: string
+}
+
+export type ChatQuery = {
+  __typename?: "Query"
+  chats: Chats[]
+}
+
+```
+
+So later on we can use it with `react-apollo-hooks` like so:
+
+```ts
+useQuery<ChatsQuery>(getChatsQuery)
+```
+
+Everything looks nice in theory, but the main issue that arises from having type definitions is that we need to maintain and sync 2 similar code bases: 
+A GraphQL schema and TypeScript type definitions. 
+Both are essentially the same, and if so, why do we even need to maintain 2 code bases? 
+Isn't there a tool which does that for us? A question which brings us straight to the point of the chapter.
+
+**Introducing: GraphQL Code Generator**
+
+With [GraphQL Code Generator](https://graphql-code-generator.com/) we can generate TypeScript definitions given a GraphQL schema, and a set of GraphQL documents if they are presented to us.
+
+
+
+![graphql-codegen](https://user-images.githubusercontent.com/7648874/54940897-9f564380-4f66-11e9-9891-3b994a1daef1.png)
+
+
+GraphQL Code Generator is a simple CLI tool that operates based on a configuration file and can generate TypeScript types for both Client and Server. 
+We will start with generating types for the server.
+
+In the server project, install GraphQL Code Generator via Yarn
+
+    $ yarn add @graphql-codegen/cli --dev
+
+Now GraphQL Code Generator can be used directly from the `scripts` section in the `package.json` file using the `gql-gen` binary. 
+We're gonna call the code generation script "codegen":
+
+```json
+{
+  "codegen": "gql-gen"
+}
+```
+
+This command will automatically be referenced to a configuration file in the root of our project called `codegen.yml`. 
+The essence of this file is to provide the code generator with the GraphQL schema, GraphQL documents, the output path of the type definition file/s and a set of plug-ins. 
+More about the configuration file can be found in the [official website](https://graphql-code-generator.com/docs/getting-started/codegen-config).
+
+In the server project, we will generate the `types/graphql.d.ts` file and we will use a couple of plug-ins to do that:
+
+
+
+*   `@graphql-codegen/typescript` - Will generate the core TypeScript types from our GraphQL schema.
+*   `@graphql-codegen/typescript-resolvers` - Will generate resolvers signatures with the generated TypeScript types.
+
+> A full list of available plugins is available [here](https://graphql-code-generator.com/docs/plugins/). In addition, you can write your own [custom plugin](https://graphql-code-generator.com/docs/custom-codegen/write-your-plugin).
+
+Let's install these 2 plugins:
+
+    $ yarn add @graphql-codegen/typescript @graphql-codegen/typescript-resolvers --dev
+
+And write the `codegen.yml` file:
+
+{{{ diffStep 6.1 module="server" files="codegen.yml" }}}
+
+> See inline comments to learn more about our configuration setup.
+
+Now if you'll run `$ npm run codegen` you should see that a new file `types/graphql.d.ts` has been generated with all the necessary TypeScript types. Since these types are very likely to change as we extend our schema, there's no need to include them in our project, thus it's recommended to add the appropriate .gitignore rule:
+
+{{{ diffStep 6.1 module="server" files=".gitignore" }}}
+
+Now we can import the `IResolvers` type from the file we've just created and use it in the `resolvers.ts` file to ensure our resolvers handlers have the right signature:
+
+{{{ diffStep 6.2 module="server" }}}
+
+We will now repeat the same process in the client with few tweaks. Again, we will install GraphQL Code Generator:
+
+    $ yarn add @graphql-codegen/cli --dev
+
+And we will define a script:
+
+```json
+{
+  "codegen": "gql-gen"
+}
+```
+
+This time around, because we're in the client, we will define a set of glob paths that will specify which files contain GraphQL documents. 
+GraphQL Code Generator is smart enough to automatically recognize the documents within these files by looking at the `gql` template literal calls using the `typescript-operations` package. 
+We will be using a plugin called `typescript-react-apollo` to generate React/Apollo-GraphQL hooks that can be used in our function components. 
+Let's install the necessary plugins:
+
+    $ yarn add @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-operations @graphql-codegen/typescript-react-apollo @graphql-codegen/add
+
+
+And we will write the `codegen.yml` file:
+
+{{{ diffStep 9.1 module="client" files="codegen.yml" }}}
+
+Notice that we sent the schema as a local path.
+We could have also provided a GraphQL endpoint that exposes a GraphQL schema. 
+This way if there's an existing running GraphQL API, we can generate TypeScript types out of it, such as GitHub's GraphQL API. 
+The advantages of providing a local path is that the server doesn't have to be running in order to generate types, which is more comfortable in development, and we can bypass authentication if the endpoint is guarded with such mechanism. 
+This will be useful in further chapters when we're introduced to the concept of authentication.
+
+Be sure to add a .gitignore rule because we want to run the generator every time there is a change and don't want to rely on old generated types:
+
+{{{ diffStep 9.1 module="client" files=".gitignore" }}}
+
+Now we have TypeScript types available to us and we can replace `useQuery()` and `useMutation()` calls with the generated React hooks.
+Let's use those and also remove all the old manual typings:
+
+{{{ diffStep 9.2 module="client" }}}
+
+To test if things are working properly, we can address a non existing field in one of the retrieved query results, for example `chat.foo` in `useGetChatQuery()`. 
+We should receive the following typing error when trying to run the project:
+
+```
+TypeScript error: Property 'foo' does not exist on type '{ __typename?: "Chat"; } & { __typename?: "Chat"; } & { messages: ({ __typename?: "Message"; } & { __typename?: "Message"; } & Pick<Message, "id" | "createdAt" | "content">)[]; } & { __typename?: "Chat"; } & Pick<...> & { ...; }'.  TS2339
+
+    44 |   const addMessage = useAddMessageMutation()
+    45 | 
+  > 46 |   console.log(chat.foo)
+       |                    ^
+    47 | 
+    48 |   const onSendMessage = useCallback((content) => {
+    49 |     addMessage({
+```
+
+TODO: Mappers are not explained - The root types of Message resolvers - doesn’t say much
+we don’t need to use `resolvers as IResolvers`, there’s a flag for it, in codegen
+
+TODO: Change `gql-gen` to `graphql-codegen`

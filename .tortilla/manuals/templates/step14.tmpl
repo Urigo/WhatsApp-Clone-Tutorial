@@ -1,0 +1,321 @@
+**Which Relational Database? And Why?**
+
+We’ve used to have an in-memory database so far that keeps our entities on memory inside business logic so far. But in a real application we will need a real database system that keeps our data which is seperated from our business logic. In this part we will design our database according to the relational database principles with the benefits of SQL.
+
+We prefer to use PostgreSQL from now on; because PostgreSQL is a Relational Database implementation that has tables, constraints, triggers, roles, stored procedures and views together with foreign tables from external data sources and many features from NoSQL.
+
+**Database Design**
+
+While we are defining our entity types and schema inside our array-based in-memory database, we have already designed the basic parts of them. In this part, we will design our relational database with base and relation tables regarding to them.
+
+Initially we can decide the base fields without relations;
+* User; 
+    * `id`
+    * `name`
+    * `username`
+    * `password`
+    * `picture`
+* Message;
+    * `id`
+    * `content`
+    * `created_at`
+* Chat; 
+    * `id`
+
+Before creating tables, we should design our database structure according to [Database Normalization principles](https://www.essentialsql.com/get-ready-to-learn-sql-database-normalization-explained-in-simple-english/) to prevent duplicated data and modification anomalies.
+
+Initially we will have 3 base tables in our database; `user`, `chat`, `message`; and there are some relations between those 3 tables. These relations will be defined in other relation tables together with different primary key and foreign key definitions.
+
+There are four types of relations in relational databases;
+
+* One to one
+    * This relationship means A entity type can have a relationship with only one instance of B entity type while B entity type can have a relationship with only one instance of A entity type. For example, one user can have only one profile while a profile belongs to only one user.
+* Many to one
+    * This relationship means A entity type can have a relationship with multiple instances of B entity type while B entity type can have a relationship with only one instance of A entity type. For example, a chat can have multiple messages while a message belongs to only one chat. But `many to one` as a word means multiple photos belong to the same chat.
+* One to many
+    * This relationship has the same logic with Many to one. However, `One to many` as a word means a chat can have multiple messages while those messages cannot have multiple chats but only one. 
+* Many to many
+    * This relationship means A entity type can have a relationship with multiple instances of B entity type while B entity type can have a relationship with multiple instances of A entity type dependently or independently. For example; a chat can have multiple users, and a user can have multiple chats.
+
+You can read more about those relations in [here](https://www.techrepublic.com/article/relational-databases-defining-relationships-between-database-tables/).
+
+In existing entity declarations and schema, we have 6 relationships;
+
+* Message has a One To Many relationship under the name of `chat` inside our schema; so one message can have one chat while one chat can have multiple messages.
+    gql```
+    type Message { chat: Chat }
+    ```
+* Message has another One To Many relationship under the name of `sender`` inside our schema; so one message can have one sender while one sender user can have multiple messages.
+    gql```
+    type Message { sender: User }
+    ```
+* Message has one more One To Many relationship under the name of `recipient`` inside our schema; so one message can have one recipient while one recipient user can have multiple messages.
+    gql```
+    type Message { recipient: User }
+    ```
+* Chat has a One To Many relationship under the name of `messages`, because one chat can have multiple messages while one message can have only one chat. Notice that this relationship is the reversed version of the first relationship in Message. 
+    gql```
+    `type Chat { messages: [Message] }
+    ```
+* Chat has another Many To Many relationship under the name of `participants`, because one chat can have multiple participants while a participant can have multiple chats as well.
+    gql```
+    type Chat { participants: [User] }
+    ```
+* User has a Many To Many relationship under the name of `chats`, because one user can have multiple chats, while it has the same situation for chats.
+    gql```
+    type User { chats: [Chat] }
+    ```
+
+So we should decide the dependencies between each other to add columns and tables to our database.
+
+* User is independent in all relationships, so we will keep its columns as it is
+* Message is dependent to User in two cases so we can define this relationship as two different new foreign keys pointing to User’s id under the columns `sender_user_id`. But we don’t need `recipient_user_id` because `recipient` can be found under Chat’s participants. 
+* Chat is also independent because it will be better to keep those relations inside Message.
+* Message is dependent to Chat so we can define this relationship as a new foreign key that points to Chat’s id under the column named `chat_id`.
+* We need to have another table that defines the relationship between multiple chats and users.
+
+> We don’t need to duplicate relations in each entities, because SQL has the power to reverse each relations even if they are defined only in one entity. This is one of the rule of Database Normalization.
+
+Finally we can decide on our tables;
+
+* `chats` table; 
+    * `id` ->
+        * `PRIMARY KEY` - `SERIAL`
+        * `SERIAL` will automatically increase the number of the new chat row. Check SQL docs about primary key and auto increment
+* `users` table;
+    * `id` -> 
+        * `PRIMARY KEY` - `SERIAL`
+    * `name` ->
+        * `VARCHAR`
+    * `username` ->
+        * `VARCHAR` - `UNIQUE`
+        * `UNIQUE` means this value can exist in this table only once. We use this feature because `username` must be unique in users for each user
+    * `password` ->
+        * `VARCHAR`
+    * `picture` ->
+        * `VARCHAR`
+* `chats_users` table;
+    * `chat_id` -> 
+        * `FOREIGN KEY` points to `chat.id` -> 
+            * `ON DELETE` -> `CASCADE`. 
+            * This means that if chat that has this id is deleted, this row will be deleted automatically as well.
+    * `user_id` -> 
+        * FOREIGN KEY points to `user.id` -> 
+            * `ON DELETE` -> `CASCADE`. 
+* `messages` table;
+    * `id` ->
+        * `PRIMARY KEY` - `SERIAL`
+    * `content` ->
+        * `VARCHAR`
+    * `created_at` ->
+        * `TIMESTAMP` ->
+            * `DEFAULT_VALUE = now()`
+            * This means it will automatically set this to the current timestamp in the new row.
+    * `chat_id` ->
+        * `FOREIGN KEY` points to `chat.id` ->
+            * `ON DELETE` -> `CASCADE`
+            * This means that if chat that has this id is deleted, this row will be deleted automatically as well. So the message will be deleted immediately after the chat is deleted.
+    * `sender_user_id` ->
+        * `FOREIGN_KEY` points to `user.id`
+            * `ON DELETE` -> `CASCADE`
+            * This means that if user that has this id is deleted, this message will be deleted.
+
+> Notice that having a good dependency gives us an opportunity to benefit from `ON_DELETE` feature of SQL. Otherwise, we need to delete each dependent row manually by hand.
+
+**Installing PostgreSQL on your machine**
+
+***Windows / Mac OS X***
+
+You can download one-click installer for Windows and Mac OS X. During the installation, you must define a password and keep it somewhere safe.
+
+[https://www.enterprisedb.com/downloads/postgres-postgresql-downloads](Download Installer)
+
+***Ubuntu / Debian***
+
+If you have Debian package manager on your machine, you can install PostgreSQL in a single line in your Bash terminal;
+
+    $ sudo apt-get install postgresql postgresql-contrib 
+
+***Other environments***
+
+Check [https://www.postgresql.org/download/](PostgreSQL website) for installation instructions on other environments.
+
+**Creating Database, Database User and Tables**
+
+> Make sure you have installed PostgreSQL on your environment first!
+
+We will use Bash terminal in order to access PostgreSQL using superuser;
+
+    $ su - postgres
+
+You don't need to execute the previous command if you're using Windows. But you have to open the terminal with Administrator privileges.
+
+    $ psql template1
+
+Then we will see the following PostgreSQL console;
+
+bash```
+Welcome to psql 7.4.16, the PostgreSQL interactive terminal.
+
+Type:  \\copyright for distribution terms
+       \\h for help with SQL commands
+       \\? for help on internal slash commands
+       \\g or terminate with semicolon to execute query
+       \\q to quit
+
+template1
+```
+
+So we can do the following SQL operations in order to create our new user, database and tables;
+
+* Create user for our database
+
+```sql
+    CREATE DATABASE whatsapp;
+```
+
+* Create database
+
+```sql
+    CREATE USER testuser WITH PASSWORD 'testpassword';
+```
+
+* Give permissions to that user
+
+```sql
+    GRANT ALL PRIVILEGES ON DATABASE whatsapp to testuser;
+```
+
+* Connect database
+
+```sql
+    \connect whatsapp
+```
+
+* Create `chats` table
+
+```sql
+    CREATE TABLE chats( 
+        id SERIAL PRIMARY KEY
+    );
+```
+
+* Create `users` table
+
+```sql
+    CREATE TABLE users( 
+        id SERIAL PRIMARY KEY,
+        username VARCHAR (50) UNIQUE NOT NULL,
+        name VARCHAR (50) NOT NULL,
+        password VARCHAR (255) NOT NULL,
+        picture VARCHAR (255) NOT NULL
+    );
+```
+
+* Create `chats_users` table
+
+```sql
+    CREATE TABLE chats_users( 
+        chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    );
+```
+
+* Create messages table;
+
+```sql
+    CREATE TABLE messages( 
+        id SERIAL PRIMARY KEY,
+        content VARCHAR (355) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+        sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    );
+```
+
+* Give access for those tables
+
+```sql
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO testuser;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO testuser;
+```
+
+**Installing PostgreSQL on our backend project**
+
+As we are using PostgreSQL, we will use `node-postgres` as our database client in the backend.
+
+First install necessary npm packages using yarn;
+
+	$ yarn add pg
+
+And we will also need TypeScript definitions for better development experience;
+
+	$ yarn add @types/pg --dev
+
+We will use `sql` template literals (which is way easier and safer than native API) with [this package](https://github.com/felixfbecker/node-sql-template-strings) which allows you to have SQL highlighting in VSCode with (this extension)[https://marketplace.visualstudio.com/items?itemName=forbeslindesay.vscode-sql-template-literal].
+
+	$ yarn add sql-template-strings
+
+**Connecting to our database**
+
+We will use connection pooling to prevent connection leaks and benefit from transactions in our complicated SQL queries. [You can read more about the benefits of connection pooling.](https://node-postgres.com/features/pooling)
+
+First we need to create a connection pool using our connection credentials;
+
+{{{diffStep 11.2 module="server" files="db"}}}
+
+**Add Database Client to GraphQL Context**
+
+After that, we will request a client from this pool on each network request in our GraphQL context. So we need to update our context interface and context builder function.
+
+{{{diffStep 11.3 module="server" files="context, index"}}}
+
+> However we need to release that client to the pool after the network connection ends to prevent connection leaks. So, let’s use `formatResponse` to do this operation.
+> We don't need connection pooling for subscriptions, because it can cause the connection open in all websocket connection. That's why, we don't request a new client from the pool if it is a subscription.
+
+**Update entity typings**
+
+We should update our entity typings according to our new database tables and columns. 
+
+{{{diffStep 11.4 module="server" files="db"}}}
+
+**Add Sample Data**
+
+We need to update the `resetDb` function to add a sample data to our new relational database instead of in-memory database. But we will call `resetDb` if it is asked by using the environmental variable.
+
+{{{diffStep 11.5 module="server" files="db"}}}
+
+> When you update tables with your own ID values, you have to update `SEQUENCE`; because PostgreSQL calculates the next ID value using `SEQUENCE`s.
+
+**Updating Resolvers**
+
+We will benefit from transactions for complicated SQL queries in mutation. Transactions will help us to rollback our changes if there is an exception in the middle of our operations.
+
+{{{diffStep 11.6 module="server" files="resolvers"}}}
+
+> We use `pool` itself instead of `db` from the context in the subscriptions. Remember we don't request for a new client from the pool in subscriptions.
+> If you use `pool.query`, it just opens a connection, does that operation and set the client free. In that case, you wouldn't be able to work with transactions which is not need in GraphQL Subscriptions.
+
+**Updating Subscriptions w/ PostgreSQL PubSub mechanism**
+
+Apollo’s default PubSub mechanism is not for production usage. So, we will use PostgreSQL’s notify/listen for our PubSub mechanism in GraphQL Subscriptions.
+
+Install the necessary packages;
+
+	$ yarn add graphql-postgres-subscriptions
+
+{{{diffStep 11.7 module="server" files="index"}}}
+
+> Unfortunately `graphql-postgres-subscription` doesn't have TypeScript typings, so we have to import it using `require`.
+
+**Updating Tests**
+
+We should update tests to use SQL instead of in-memory database.
+
+{{{diffStep 11.8 module="server" files="test"}}}
+
+**Remove in-memory database**
+
+We can remove all the stuff related to in-memory database now.
+
+{{{diffStep 11.9 module="server" files="db"}}}

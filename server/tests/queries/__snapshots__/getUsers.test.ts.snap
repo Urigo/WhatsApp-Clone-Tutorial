@@ -1,0 +1,55 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Query.getUsers should fetch all users except the one signed-in 1`] = `
+Object {
+  "users": Array [
+    Object {
+      "id": "2",
+      "name": "Ethan Gonzalez",
+      "picture": "https://randomuser.me/api/portraits/thumb/men/1.jpg",
+    },
+    Object {
+      "id": "3",
+      "name": "Bryan Wallace",
+      "picture": "https://randomuser.me/api/portraits/thumb/men/2.jpg",
+    },
+    Object {
+      "id": "4",
+      "name": "Avery Stewart",
+      "picture": "https://randomuser.me/api/portraits/thumb/women/1.jpg",
+    },
+    Object {
+      "id": "5",
+      "name": "Katie Peterson",
+      "picture": "https://randomuser.me/api/portraits/thumb/women/2.jpg",
+    },
+  ],
+}
+`;
+
+exports[`Query.getUsers should fetch all users except the one signed-in 2`] = `
+Object {
+  "users": Array [
+    Object {
+      "id": "1",
+      "name": "Ray Edwards",
+      "picture": "https://randomuser.me/api/portraits/thumb/lego/1.jpg",
+    },
+    Object {
+      "id": "3",
+      "name": "Bryan Wallace",
+      "picture": "https://randomuser.me/api/portraits/thumb/men/2.jpg",
+    },
+    Object {
+      "id": "4",
+      "name": "Avery Stewart",
+      "picture": "https://randomuser.me/api/portraits/thumb/women/1.jpg",
+    },
+    Object {
+      "id": "5",
+      "name": "Katie Peterson",
+      "picture": "https://randomuser.me/api/portraits/thumb/women/2.jpg",
+    },
+  ],
+}
+`;

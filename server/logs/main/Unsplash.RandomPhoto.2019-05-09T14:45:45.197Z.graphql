@@ -1,0 +1,103 @@
+type Exif {
+  make: String!
+  model: String!
+  exposure_time: String!
+  aperture: String!
+  focal_length: String!
+  iso: Int!
+}
+
+scalar JSON
+
+type Links {
+  self: String!
+  html: String!
+  download: String
+  download_location: String
+  photos: String
+  likes: String
+  portfolio: String
+  following: String
+  followers: String
+}
+
+type Location {
+  title: String!
+  name: String!
+  city: String!
+  country: String!
+  position: Position!
+}
+
+type Position {
+  latitude: Int!
+  longitude: Int!
+}
+
+type Profile_image {
+  small: String!
+  medium: String!
+  large: String!
+}
+
+type RandomPhoto {
+  id: String!
+  created_at: String!
+  updated_at: String!
+  width: Int!
+  height: Int!
+  color: String!
+  description: String!
+  alt_description: String!
+  urls: Urls!
+  links: Links!
+  categories: [JSON]!
+  sponsored: Boolean!
+  sponsored_by: JSON
+  sponsored_impressions_id: JSON
+  likes: Int!
+  liked_by_user: Boolean!
+  current_user_collections: [JSON]!
+  user: User!
+  exif: Exif!
+  location: Location!
+  views: Int!
+  downloads: Int!
+}
+
+input RandomPhotoInput {
+  query: String!
+  orientation: String!
+}
+
+type Root {
+  RandomPhoto(input: RandomPhotoInput): RandomPhoto
+}
+
+type Urls {
+  raw: String!
+  full: String!
+  regular: String!
+  small: String!
+  thumb: String!
+}
+
+type User {
+  id: String!
+  updated_at: String!
+  username: String!
+  name: String!
+  first_name: String!
+  last_name: String!
+  twitter_username: String!
+  portfolio_url: JSON
+  bio: String!
+  location: String!
+  links: Links!
+  profile_image: Profile_image!
+  instagram_username: String!
+  total_collections: Int!
+  total_likes: Int!
+  total_photos: Int!
+  accepted_tos: Boolean!
+}
