@@ -112,9 +112,30 @@ We can use the
         `$ curl localhost:4000/_ping` 
         
 command to send a request to the server and we should get a "pong", assuming that the server available on that URL. 
+
+**Code formatting**
+
+Just like we talked in the first chapter, some developers write code in a different style than others and since we want to make it consistent, we're going to use **Prettier**.
+
+    $ yarn add -D prettier
+
+We're going to define a npm script called `format`, few styling rules and we're also going to ignore *node_modules*:
+
+{{{ diffStep "1.4" module="server" files="package.json, .prettierrc.yml, .prettierignore" }}}
+
+Now let's run:
+
+    $ yarn format
+
+Prettier should format your code:
+
+{{{ diffStep "1.4" module="server" files="index.ts" }}}
+
+> Remember to run `yarn prettier` before you comit your changes!
+
 The `GET /chats` should be implemented similarly, only the response is different. Instead of returning "pong" we will return the data-mock for our chats:
 
-{{{ diffStep "1.4" module="server" files="index.ts, db.ts" }}}
+{{{ diffStep "1.5" module="server" files="index.ts, db.ts" }}}
 
 TODO: Mention `_req`
 
@@ -137,7 +158,7 @@ and its Typescript types:
 
     $ yarn add --dev @types/cors
 
-{{{ diffStep "1.4" module="server" files="index.ts" }}}
+{{{ diffStep "1.6" module="server" files="index.ts" }}}
 
 The server is now ready to use! 
 

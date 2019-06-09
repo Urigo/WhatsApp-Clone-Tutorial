@@ -1,7 +1,13 @@
 import React from 'react';
 import { ApolloProvider } from 'react-apollo-hooks';
 import ReactDOM from 'react-dom';
-import { cleanup, render, fireEvent, wait, waitForDomChange } from 'react-testing-library';
+import {
+  cleanup,
+  render,
+  fireEvent,
+  wait,
+  waitForDomChange,
+} from '@testing-library/react';
 import { createBrowserHistory } from 'history';
 import { mockApolloClient } from '../../test-helpers';
 import ChatsList, { getChatsQuery } from './ChatsList';
@@ -29,7 +35,7 @@ describe('ChatsList', () => {
                   __typename: 'Message',
                   id: 1,
                   content: 'Hello',
-                  createdAt: new Date('14 Jun 2017 00:00:00 PDT').toUTCString(),
+                  createdAt: new Date('1 Jan 2019 GMT'),
                   isMine: true,
                   chat: {
                     __typename: 'Chat',
@@ -53,9 +59,12 @@ describe('ChatsList', () => {
       await waitForDomChange({ container });
 
       expect(getByTestId('name')).toHaveTextContent('Foo Bar');
-      expect(getByTestId('picture')).toHaveAttribute('src', 'https://localhost:4000/picture.jpg');
+      expect(getByTestId('picture')).toHaveAttribute(
+        'src',
+        'https://localhost:4000/picture.jpg'
+      );
       expect(getByTestId('content')).toHaveTextContent('Hello');
-      expect(getByTestId('date')).toHaveTextContent('10:00');
+      expect(getByTestId('date')).toHaveTextContent('02:00');
     }
   });
 
@@ -75,7 +84,7 @@ describe('ChatsList', () => {
                   __typename: 'Message',
                   id: 1,
                   content: 'Hello',
-                  createdAt: new Date(0),
+                  createdAt: new Date('1 Jan 2019 GMT'),
                   isMine: true,
                   chat: {
                     __typename: 'Chat',
@@ -89,7 +98,7 @@ describe('ChatsList', () => {
       },
     ]);
 
-     const history = createBrowserHistory();
+    const history = createBrowserHistory();
 
     {
       const { container, getByTestId } = render(
@@ -98,13 +107,11 @@ describe('ChatsList', () => {
         </ApolloProvider>
       );
 
-       await waitForDomChange({ container });
+      await waitForDomChange({ container });
 
-       fireEvent.click(getByTestId('chat'));
+      fireEvent.click(getByTestId('chat'));
 
-       await wait(() =>
-        expect(history.location.pathname).toEqual('/chats/1')
-      );
+      await wait(() => expect(history.location.pathname).toEqual('/chats/1'));
     }
   });
 });

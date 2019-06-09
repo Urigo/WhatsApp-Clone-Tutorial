@@ -1,7 +1,7 @@
 import { createMemoryHistory } from 'history';
 import React from 'react';
 import { ApolloProvider } from 'react-apollo-hooks';
-import { cleanup, render, fireEvent, wait } from 'react-testing-library';
+import { cleanup, render, fireEvent, wait } from '@testing-library/react';
 import { mockApolloClient } from '../../test-helpers';
 import ChatNavbar from './ChatNavbar';
 import { RemoveChatDocument } from '../../graphql/types';
@@ -26,9 +26,12 @@ describe('ChatNavbar', () => {
       );
 
       expect(getByTestId('chat-name')).toHaveTextContent('Foo Bar');
-      expect(getByTestId('chat-picture')).toHaveAttribute('src', 'https://localhost:4000/picture.jpg');
+      expect(getByTestId('chat-picture')).toHaveAttribute(
+        'src',
+        'https://localhost:4000/picture.jpg'
+      );
     }
-  })
+  });
 
   it('goes back on arrow click', async () => {
     const client = mockApolloClient();
@@ -43,9 +46,7 @@ describe('ChatNavbar', () => {
 
     history.push('/chats/1');
 
-    await wait(() =>
-      expect(history.location.pathname).toEqual('/chats/1')
-    )
+    await wait(() => expect(history.location.pathname).toEqual('/chats/1'));
 
     {
       const { container, getByTestId } = render(
@@ -56,9 +57,7 @@ describe('ChatNavbar', () => {
 
       fireEvent.click(getByTestId('back-button'));
 
-      await wait(() =>
-        expect(history.location.pathname).toEqual('/chats')
-      );
+      await wait(() => expect(history.location.pathname).toEqual('/chats'));
     }
   });
 
@@ -71,9 +70,9 @@ describe('ChatNavbar', () => {
         },
         result: {
           data: {
-            removeChat: '1'
-          }
-        }
+            removeChat: '1',
+          },
+        },
       },
     ]);
 
@@ -87,9 +86,7 @@ describe('ChatNavbar', () => {
 
     history.push('/chats/1');
 
-    await wait(() =>
-      expect(history.location.pathname).toEqual('/chats/1')
-    );
+    await wait(() => expect(history.location.pathname).toEqual('/chats/1'));
 
     {
       const { container, getByTestId } = render(
@@ -100,9 +97,7 @@ describe('ChatNavbar', () => {
 
       fireEvent.click(getByTestId('delete-button'));
 
-      await wait(() =>
-        expect(history.location.pathname).toEqual('/chats')
-      );
+      await wait(() => expect(history.location.pathname).toEqual('/chats'));
     }
-  })
+  });
 });

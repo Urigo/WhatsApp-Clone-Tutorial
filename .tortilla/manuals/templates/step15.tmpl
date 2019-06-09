@@ -23,11 +23,11 @@ Copy the response, create a new file called types/unsplash.ts in your vscode edi
 
 Now we can finally implement the REST API call in our picture resolver:
 
-{{{ diffStep "12.1" module="client" files="schema/resolvers.ts" }}}
+{{{ diffStep "12.1" module="server" files="schema/resolvers.ts" }}}
 
 In order to test it, we have to remove the picture from one of the users and re-run the server with the `RESET_DB=true` environment variable:
 
-{{{ diffStep "12.1" module="client" files="db.ts" }}}
+{{{ diffStep "12.1" module="server" files="db.ts" }}}
 
 
 ## Track the API
@@ -40,7 +40,7 @@ First let’s install the safe-api middleware:
 
 Then let’s use it inside our resolver:
 
-{{{ diffStep "12.2" module="client" files="schema/resolvers.ts" }}}
+{{{ diffStep "12.2" module="server" files="schema/resolvers.ts" }}}
 
 Now launch the client in order to retrieve the picture field multiple times.
 
@@ -48,7 +48,7 @@ If you look inside the logs directory you will notice that it generated some gra
 
 Now we need to remove `types/unsplash.ts` and generate some Typescript typings out of the schema. Do do so we can use the graphql-code-generator:
 
-{{{ diffStep "12.3" module="client" files=".gitignore, codegen.yml" }}}
+{{{ diffStep "12.3" module="server" files=".gitignore, codegen.yml" }}}
 
     yarn codegen
 
@@ -60,20 +60,20 @@ We’re not done yet, there is still room for improvement. Instead of using axio
     yarn remove axios @types/axios
     yarn add apollo-datasource-rest
 
-{{{ diffStep "12.4" module="client" files="schema/unsplash.api.ts" }}}
+{{{ diffStep "12.4" module="server" files="schema/unsplash.api.ts" }}}
 
 We created the UnsplashApi class, which extends RESTDataSource. In the constructor you need to set the baseUrl (after calling super() to run the constructor of the base class). You also need to create a willSendRequest method to set the authentication headers for each call. Then it’s simply a matter of creating a getRandomPhoto method to perform the actual REST API call. Instead of calling axios you will have to call the get method of the class (which in turn gets inherited from its RESTDataSource base class): the API is very similar to the axios one.
 
 In order to access the data source from the resolvers we need to tell Apollo to put them on the context for every request. We shouldn’t use the context field, because that would lead to circular dependencies. Instead we need to use the dataSources field:
 
-{{{ diffStep "12.4" module="client" files="index.ts" }}}
+{{{ diffStep "12.4" module="server" files="index.ts" }}}
 
 Now we need to update the typings for our context and run the graphq-code-generator again:
 
-{{{ diffStep "12.4" module="client" files="context.ts" }}}
+{{{ diffStep "12.4" module="server" files="context.ts" }}}
 
     yarn codegen
 
 Now it should be pretty easy to modify our resolver in order to use our just created datasource:
 
-{{{ diffStep "12.4" module="client" files="schema/resolvers.ts" }}}
+{{{ diffStep "12.4" module="server" files="schema/resolvers.ts" }}}

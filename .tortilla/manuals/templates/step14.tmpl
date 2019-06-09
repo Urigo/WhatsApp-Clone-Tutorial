@@ -42,29 +42,41 @@ You can read more about those relations in [here](https://www.techrepublic.com/a
 In existing entity declarations and schema, we have 6 relationships;
 
 * Message has a One To Many relationship under the name of `chat` inside our schema; so one message can have one chat while one chat can have multiple messages.
-    gql```
-    type Message { chat: Chat }
-    ```
+
+```gql
+type Message { chat: Chat }
+```
+
 * Message has another One To Many relationship under the name of `sender`` inside our schema; so one message can have one sender while one sender user can have multiple messages.
-    gql```
-    type Message { sender: User }
-    ```
+
+```gql
+type Message { sender: User }
+```
+
 * Message has one more One To Many relationship under the name of `recipient`` inside our schema; so one message can have one recipient while one recipient user can have multiple messages.
-    gql```
-    type Message { recipient: User }
-    ```
+
+```gql
+type Message { recipient: User }
+```
+
 * Chat has a One To Many relationship under the name of `messages`, because one chat can have multiple messages while one message can have only one chat. Notice that this relationship is the reversed version of the first relationship in Message. 
-    gql```
-    `type Chat { messages: [Message] }
-    ```
+
+```gql
+`type Chat { messages: [Message] }
+```
+
 * Chat has another Many To Many relationship under the name of `participants`, because one chat can have multiple participants while a participant can have multiple chats as well.
-    gql```
-    type Chat { participants: [User] }
-    ```
+
+```gql
+type Chat { participants: [User] }
+```
+
 * User has a Many To Many relationship under the name of `chats`, because one user can have multiple chats, while it has the same situation for chats.
-    gql```
-    type User { chats: [Chat] }
-    ```
+
+```gql
+type User { chats: [Chat] }
+```
+
 
 So we should decide the dependencies between each other to add columns and tables to our database.
 

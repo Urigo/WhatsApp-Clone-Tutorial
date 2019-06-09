@@ -11,7 +11,7 @@ const Container = styled.div`
   width: calc(100% - 10px);
 `;
 
-const ActualInput = styled.input `
+const ActualInput = styled.input`
   width: calc(100% - 50px);
   border: none;
   border-radius: 999px;
@@ -25,7 +25,7 @@ const ActualInput = styled.input `
   line-height: 45px;
 `;
 
-const SendButton = styled(Button) `
+const SendButton = styled(Button)`
   min-width: 50px !important;
   width: 50px !important;
   border-radius: 999px !important;
@@ -45,7 +45,7 @@ interface MessageInputProps {
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState('');
 
   const onKeyPress = (e: any) => {
     if (e.charCode === 13) {
@@ -60,9 +60,9 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   const submitMessage = () => {
     if (!message) return;
 
-    setMessage("");
+    setMessage('');
 
-    if (typeof onSendMessage === "function") {
+    if (typeof onSendMessage === 'function') {
       onSendMessage(message);
     }
   };
@@ -81,8 +81,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
         data-testid="send-button"
         variant="contained"
         color="primary"
-        onClick={submitMessage}
-      >
+        onClick={submitMessage}>
         <SendIcon />
       </SendButton>
     </Container>

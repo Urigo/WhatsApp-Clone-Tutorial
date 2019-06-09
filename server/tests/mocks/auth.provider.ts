@@ -7,7 +7,7 @@ export function mockAuth(userId: number) {
   class AuthMock extends Auth {
     async currentUser() {
       const { rows } = await pool.query(
-        sql`SELECT * FROM users WHERE id = ${userId}`,
+        sql`SELECT * FROM users WHERE id = ${userId}`
       );
       return rows[0];
     }
