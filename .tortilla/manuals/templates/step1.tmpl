@@ -119,21 +119,22 @@ something will import our component.
 
 The last thing we haven't explained is the following part: `App: React.FC`.
 Those are Typescript typings. Everything after `:` describes the types of the `App` variable and has no affect on the behavior and execution of the app.
-It will tell Typescript what `App` is suppose to look so that in case we make a mistake Typescript will warn us before we get the app running.
+It will tell Typescript how `App` is supposed to look like, so that in case we make a mistake, Typescript will warn us before we get the app running.
 
 So what are the types of React.FC?  You can check it out inside by using command+click on it's name. 
 You see that it accepts `P` as props into the component and needs to return `React.Element` or `null`.
 
-Let's test this out, add a Typescript interface named `AppProps` and put that it includes a property called `name` of type string.
+Let's test out how typescript typings work: Declare a Typescript interface named `AppProps` that includes a property called `name` of type string. Now use that interface to describe the shape that app's props should have: update the line that declares app to `const App: React.FC<AppProps> = ({name}) => {`
 
-Now let's try to return something invalid. `"some string"`, or `1+1`.
-You can see that our editor is calling out that there are errors in our code.
+Now open the file `src/index.tsx`. 
+You can see that our editor is calling out that there is an error in our code because no name prop is passed to the App component.
 
-You will encounter those error a lot as you develop.
+You will encounter those errors a lot as you develop.
 Always read the errors all the way. Understand each sentence there because that will save you a lot of time.
 
-Ok we now know the component doesn't get anything into itself so let's make sure the typings reflect that as well.
-The default for React.FC is that there are no props passed inside so if we'll bring that back but keep sending the `name` value from `index.tsx` in the code, you should now get an error.
+As the error message suggests, give the App component a name prop. If you pass a prop that is not a string like `true` or `1+1`, TypeScript will let you know with an error.
+
+The default for React.FC is that there are no props passed inside so if we'll bring that back but keep sending the `name` value from `index.tsx` in the code, you should now get an error because you are passing a props that the component doesn't accept.
 
 Those errors can be very useful when your app grows.
 Make sure to define types on the component itself like we have done now. It would make it easier to identify the issues.
@@ -145,7 +146,7 @@ Later on we'll learn better strategies of sorting our styles and making
 sure they are not touching components that we don't want them to affect.
 
 Next file - `App.test.tsx`.  
-This file contains automatic tests to make sure our app is doing what it's suppose to do.
+This file contains automatic tests to make sure our app is doing what it's supposed to do.
 
 We are programmers, that means that many times our job is to take something manual and making it automatic.
 That's why we should also strive to automate things we do ourselves.
@@ -236,9 +237,9 @@ First let's remove the current React code and add our own code into it.
 
 For now, let's create fake data on our HTML.
 
-Add this data will be changed and we are not going to manually add HTML tags every time there is a new message, let's move our data into a JSON structure.
+As this data will be changed and we are not going to manually add HTML tags every time there is a new message, let's move our data into a JSON structure.
 For now it would be a structure we will manually create.
-That way we can make our React component already behave like our final version.
+That way we can already make our React component behave like our final version.
 
 {{{ diffStep "1.4" module="client" files="App.tsx" }}}
 
@@ -289,7 +290,7 @@ We will create the file in a JSON format:
 
 We are giving IDs for the values just like a database gives a unique id for each value.
 
-The is so we can reference specific values, for example, 
+This is so we can reference specific values, for example, 
 last message would actually reference the other array instead of duplicating the values.
 
 Now let's change ChatsList component to import the data from that file.
@@ -309,7 +310,7 @@ If you'll remove that and render again you will see the following error inside t
 By telling React how to identify and distinguish each element using the `key` value we help solve that problem and also making React faster.
 Read [here](https://reactjs.org/docs/lists-and-keys.html) for more in depth explanation.
 
-Now that we rendered a line for each chat, let's add also the last message's content and creation date for each chat:
+Now that we've rendered a line for each chat, let's add also the last message's content and creation date for each chat:
 
 {{{ diffStep "1.9" module="client" }}}
 
