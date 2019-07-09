@@ -192,6 +192,10 @@ As you can see, the middleware requires a schema. A schema is composed mainly ou
 We will start first by defining the types. 
 All we have to do is to copy-paste the contents of the schema that was shown earlier into a new file called `typeDefs.graphql`:
 
+Note that some of the fields have exclamation mark at the end and it means that the field is non-nullable, meaning that the GraphQL service promises to always give you a value when you query this field.  
+
+Chats Query is even more interesting case with two exclamation marks `[Chat!]!`. The outer exclamation mark means that if you run this query it will always return an array of zero or more items and inner exclamation mark means that every item of returned array will be of type `Chat`. 
+
 {{{ diffStep "2.2" module="server" files="schema/typeDefs.graphql" }}}
 
 The `.graphql` file extension is just a more convenient way to work with a GraphQL schema. The exported result should be a simple string that we can use to compose our GraphQL schema. The clear advantage of working with a dedicated file is that we get to have syntax highlight.
