@@ -152,6 +152,17 @@ If you have Debian package manager on your machine, you can install PostgreSQL i
 
 Check [https://www.postgresql.org/download/](PostgreSQL website) for installation instructions on other environments.
 
+Following above link, after initialization database with: 
+```
+postgresql-setup initdb
+```
+Navigate to /var/lib/pgsql/11/data/pg_hba.conf and edit IPv4 local connections to:
+```
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            trust
+```
+By doing so you are setting PostgreSQL permissions so your WhatsApp server can access the database.
+
 **Creating Database, Database User and Tables**
 
 > Make sure you have installed PostgreSQL on your environment first!
