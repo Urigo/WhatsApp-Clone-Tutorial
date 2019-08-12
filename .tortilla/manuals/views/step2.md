@@ -360,8 +360,6 @@ we enhanced the `Toolbar` component from `material-ui.
 
 Notice that we also called the wrapper `Container` but again it has no affect on any component outside of our specific component.
 
-> Notice that we've added Typescript type inference `as typeof Toolbar` at the end. That's because of an issue that suppose to be fixed when we'll upgrade to material-ui v4.
-
 Let's finish this off by doing the same in our last component:
 
 [{]: <helper> (diffStep "2.5" files="ChatsList.tsx" module="client")
