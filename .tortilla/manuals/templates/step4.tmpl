@@ -123,18 +123,19 @@ Things will be much clearer as we move further.
 Let's try to describe our app's data with a GraphQL schema and then dive into it:
 
 ```graphql
-scalar Date
+scalar DateTime
+scalar URL
 
 type Message {
   id: ID!
   content: String!
-  createdAt: Date!
+  createdAt: DateTime!
 }
 
 type Chat {
   id: ID!
   name: String!
-  picture: String
+  picture: URL
   lastMessage: Message
 }
 
@@ -143,7 +144,11 @@ type Query {
 }
 ```
 
-The schema is self explanatory in terms of what data it's compatible with. Supported built-in scalar types in GraphQL are:
+The schema is self explanatory in terms of what data it's compatible with. 
+
+To define a concrete data without any inner schema definition, scalars are used in GraphQL. For example; `Int`, `Float`, `Date`, `URL` and `EmailAddress`.
+
+Supported built-in scalar types in GraphQL are mostly primitive types such as;
 
 - Int: Signed 32‐bit integer
 - Float: Signed double-precision floating-point value
@@ -152,7 +157,12 @@ The schema is self explanatory in terms of what data it's compatible with. Suppo
 - ID (serialized as String): A unique identifier, often used to refetch an object or as the key for a cache. 
 While serialized as a String, ID signifies that it is not intended to be human‐readable
 
-Any custom scalar can be declared with the `scalar` keyword, and custom types can be declared with the `type` keyword. 
+Any custom scalar can be declared with the `scalar` keyword, and custom types can be declared with the `type` keyword. Scalars have their own internal validation, parsing and serialization logics. 
+For example, you can have a custom scalar type `DateTime`. Due to JSON format restrictions, date objects are passed in string timestamp format or a number in milliseconds.
+Instead of having parsing, serialization and validation logic in our business logic, we can define a `DateTime` scalar and put everything on it. So, we will have parsed native JavaScript `Date` object in our business logic while it is transferred as string or number like before.
+
+***[You can read more about them in that blog post](https://medium.com/the-guild/graphql-scalars-1-0-is-out-more-types-data-integrity-and-strict-validations-on-graphql-972079428fb)***
+
 However, you should know that some types are reserved by GraphQL itself; `Query` is one of them. 
 The `Query` type will be used as the root for received queries by the clients, which means that we can send queries which start with the `chats` field. 
 Other reserved types are:
@@ -209,10 +219,11 @@ Now we will implement the resolvers. Resolvers are presented in a JSON object wh
 
 For now it's extremely simple, we map the chats query directly into the database collection. Each field in the resolvers object should match the GraphQL type it represents in the schema. Since we don't have any logic now, we should not implement any resolvers for the rest of the types, the data will simply be forwarded as is.
 
-Note that we've implemented a custom scalar named `Date` and we resolved it with an NPM package. Let's install it:
+Note that we've implemented custom scalars `DateTime` and `URL` but we will need an implementation for it. We will use [`graphql-scalars`](https://github.com/urigo/graphql-scalars) that has many custom scalars ready-to-use.
 
-    $ yarn add graphql-iso-date
-    $ yarn add --dev @types/graphql-iso-date
+Let's install it:
+
+    $ yarn add graphql-scalars
 
 Final thing that we have to do would be combining the resolvers and the type-defs under a single GraphQL schema.
 
