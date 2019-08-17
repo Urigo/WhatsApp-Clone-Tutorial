@@ -70,7 +70,7 @@ So how do we get the nice React logo that is being rendered onto our screen?
 
 `create-react-app` has scripts that will run the `src/index.tsx` file together with our HTML template, so let's look what this file is doing.
 
-{{{ diffStep "root" module="client" files="public/index.html" }}}
+{{{ diffStep "root" module="client" files="src/index.tsx" }}}
 
 The important thing to see here is that `React` is calling it's render method and telling it to render the `App` component into a document where `id` equals `root`.
 
