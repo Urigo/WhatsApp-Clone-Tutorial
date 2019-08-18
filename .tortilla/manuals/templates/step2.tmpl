@@ -9,7 +9,7 @@ What's good about it is that the design is already implemented right out of the 
 Not only that, but it also includes a set of icons which are free to use.
 
 There are many things that Material-UI can offer, and it's not easy to follow it up, especially with the constantly evolving and improving API. 
-The best way to go with it, is to identify a component you need, and then look for it in the [official website](https://material-ui.com/). 
+The best way to go with it is to identify a component you need, and then look for it in the [official website](https://material-ui.com/). 
 And when it comes to searching for icons, they can be found on the [material.io](https://material-ui.com/) website through the search bar. 
 
 As we move further in this tutorial you should have a better grasp of Material and how to use it.
@@ -108,7 +108,7 @@ const Button = styled.button`
 ```
 
 * `styled` is coming from the `styled-components` library. When we call `styled.button` that means we are extending a button component from styled.
-* `Button` will become a full React componnet with the extended styled we specified
+* `Button` will become a full React component with the extended styled we specified
 * Like a React component, we can send props into our component. And like a React function, we can write Javascript code that interact and respond to those props.
 In our case, just like a check we've done before in TSX to render something only if it exists, here only if we have a `primary` property, we will add extra styles to our component.
 The created Button is actually a React.Component, so an instance of it can be created with ease like any other component:
@@ -196,8 +196,6 @@ Here you can see we've done the same, but instead of extending a built-in compon
 we enhanced the `Toolbar` component from `material-ui. 
 
 Notice that we also called the wrapper `Container` but again it has no affect on any component outside of our specific component.
-
-> Notice that we've added Typescript type inference `as typeof Toolbar` at the end. That's because of an issue that suppose to be fixed when we'll upgrade to material-ui v4.
 
 Let's finish this off by doing the same in our last component:
 
