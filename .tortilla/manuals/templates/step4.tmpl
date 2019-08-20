@@ -6,7 +6,7 @@ It allows clients to define the structure of the data required, and the exact sa
 therefore preventing excessively large amounts of data from being returned. 
 Unlike REST, GraphQL APIs are organized in terms of types and fields, not endpoints.
 
-Even if we use GraphQL without a server, it can save us a lot of code and work becuase it can transform data in a very easy way from a schema to a query.
+Even if we use GraphQL without a server, it can save us a lot of code and work because it can transform data in a very easy way from a schema to a query.
 
 Currently in our app, if we'd like to get its chats we would send a GET request to `/chats`. 
 With GraphQL it would be done differently with a string that describes the data that we would like to get:
@@ -91,7 +91,7 @@ chats {
 }
 ```
 
-We think it’s pretty straightforward to understand what do you fetch by just looking at the query above.
+We think it’s pretty straightforward to understand what you fetch by just looking at the query above.
 
 ![graphql-request](https://user-images.githubusercontent.com/7648874/54133620-5aec8300-4451-11e9-9bda-a459dc48f57c.png)
 
@@ -271,7 +271,7 @@ So getting back to the client, all we have to do is to change the fetching URL i
 The received data should be similar to the previous one. 
 No further changes are required. 
 
-In the next chapter, we will continue working on the UI of our front-end application and we will add a new screen to the flow - the `ChatRoomScreen`.
+In the next chapter, we will learn how to test the React.Components in the client, and Apollo-GraphQL resolvers in the server.
 
 -------
 TODO: Start with calling the  `graphql` function just on the server to show how it works.
