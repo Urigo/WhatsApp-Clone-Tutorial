@@ -9,8 +9,8 @@ Unlike REST, GraphQL APIs are organized in terms of types and fields, not endpoi
 Even if we use GraphQL without a server, 
 it can save us a lot of code and work because it can transform data in a very easy way from a schema to a query.
 
-Currently in our app, if we'd like to get its chats we would send a GET request to `/chats`. 
-With GraphQL it would be done differently with a string that describes the data that we would like to get:
+Currently in our app, if we'd like to get its chats, we would send a GET request to `/chats`. 
+With GraphQL, it would be done differently with a string that describes the data that we would like to get:
 
 ```graphql
 chats {
@@ -118,7 +118,7 @@ You'll get exactly what you asked for with a single request. GraphQL provides a 
 **GraphQL schema, in a nutshell**
 
 Like said earlier,  GraphQL APIs are organized in terms of types and fields. 
-That means that our app data should be described with a schema, where each field's gonna have a resolver - the handler that will return the corresponding data. 
+That means that our app data should be described with a schema, where each field gonna have a resolver - the handler that will return the corresponding data. 
 Things will be much clearer as we move further.
 
 Let's try to describe our app's data with a GraphQL schema and then dive into it:
@@ -146,7 +146,7 @@ Scalars have their own internal validation, parsing and serialization logics.
 
 For example, you can have a custom scalar type `DateTime`. 
 Due to JSON format restrictions, date objects are passed in string timestamp format or a number in milliseconds.
-Instead of having parsing, serialization and validation logic in our business logic, we can define a `DateTime` scalar and put everything on it. 
+Instead of having parsing, serialization, and validation logic in our business logic, we can define a `DateTime` scalar and put everything on it. 
 So, we will have parsed native JavaScript `Date` object in our business logic while it is transferred as string or number like before.
 
  ***[You can read more about them in that blog post](https://medium.com/the-guild/graphql-scalars-1-0-is-out-more-types-data-integrity-and-strict-validations-on-graphql-972079428fb)***
@@ -165,8 +165,8 @@ Other reserved types are:
 
 We will be implementing a GraphQL mechanism for the client and for the server. 
 We will start with the server as things will make more sense, and we will be able to test it before we proceed into the client. 
-Essentially GraphQL is connected into a HTTP endpoint, usually under `POST /graphql`, and so this is exactly what we're gonna do, connect the endpoint handler. 
-Luckily, we don't have to implement that. A team called [Apollo](https://www.apollographql.com/) already did it for us, so we can use their implementation. 
+Essentially GraphQL is connected into an HTTP endpoint, usually under `POST /graphql`, and so this is exactly what we're gonna do, connect the endpoint handler. 
+Luckily, we don't have to implement that. A team called [Apollo](https://www.apollographql.com/) already did it for us so that we can use their implementation. 
 We will install the required packages:
 
     $ yarn add apollo-server-express graphql
@@ -222,7 +222,7 @@ Final thing that we have to do would be combining the resolvers and the type-def
 
     $ yarn add graphql-tools graphql-import
 
-There's one optimization however that we should make in the our DB. Right now, the each chat document has a direct reference to a message via the `lastMessage` field. Practically speaking, this is NOT how the data sits in the DB. The `lastMessage` should only hold the ID for the correlated message, and then in the Node.JS app we should **resolve** it according to our needs. Let's make the appropriate changes in the DB then:
+There's one optimization however, that we should make in our DB. Right now, each chat document has a direct reference to a message via the `lastMessage` field. Practically speaking, this is NOT how the data sits in the DB. The `lastMessage` should only holds the ID for the correlated message, and then in the Node.JS app, we should **resolve** it according to our needs. Let's make the appropriate changes in the DB then:
 
 {{{ diffStep "2.3" module="server" files="db.ts" }}}
 
