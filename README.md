@@ -1,9 +1,4 @@
-# Whatsapp Clone Tutorial
-
-[//]: # (head-end)
-
-
-![whatsapp-clone](https://user-images.githubusercontent.com/7648874/54141944-9f801a80-4461-11e9-85a1-bcb161d9a6c6.png)
+[![whatssappgif](https://user-images.githubusercontent.com/25294569/64722192-a4885a00-d4d6-11e9-960d-8a9bae6b26de.gif)](https://github.com/Urigo/WhatsApp-Clone-Tutorial)
 
 !(https://www.youtube.com/watch?v=omsHNP4Vjhc)
 
