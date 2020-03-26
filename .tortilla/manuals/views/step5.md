@@ -194,7 +194,7 @@ We will now move on to testing the server where we will learn how to setup Jest 
 
 To set-up Jest, we will run the following in the command line:
 
-    $ yarn add --dev jest @types/jest ts-jest
+    $ yarn add jest @types/jest ts-jest --dev
 
 
 This will basically install Jest and make it useable with TypeScript.
