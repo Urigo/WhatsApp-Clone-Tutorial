@@ -571,7 +571,7 @@ Prettier should format your code:
 
 [}]: #
 
-> Remember to run `yarn prettier` before you comit your changes!
+> Remember to run `yarn format` before you commit your changes!
 
 **End of intro**
 
