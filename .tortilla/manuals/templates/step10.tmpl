@@ -61,7 +61,7 @@ As mentioned at the beginning of this article, there needs to be an open connect
 
 HTTP polling means that each amount of time an HTTP request will be made to the server where potential changes can be sent back to us at any given time. HTTP requests are very reliable, but the problem with them is that they contain a lot of information in their headers, so even if we sent an empty request, it might be still very heavy due to cookies, user-agent, language, request type, etc.
 
-With web-sockets, once a connection has been established, it will remain open and it will only send the information which is relevant for the current session, so it's much faster. The communication is between the server and the client is bi-directional when it comes to web-sockets, which means that a user can spontaneously receive information from the server, as long as the communication channel remains open.
+With web-sockets, once a connection has been established, it will remain open and it will only send the information which is relevant for the current session, so it's much faster. The communication between the server and the client is bi-directional when it comes to web-sockets, which means that a user can spontaneously receive information from the server, as long as the communication channel remains open.
 
 > More information about the advantages of Web Sockets over HTTP can be found at [websocket.org](http://websocket.org/quantum.html)
 
