@@ -19,7 +19,7 @@ On the browser we would probably use the fetch api, but since on we node we woul
 Before we start implementing, we want to create some typings for our endpoint, because ideally we would like to be aided by those typings during the development.
 In order to do so we can use a Chrome extension like Advanced Rest Client to retrieve the response.
 Set the Method to GET, the Headers to Authorization: 'Client-ID 4d048cfb4383b407eff92e4a2a5ec36c0a866be85e64caafa588c110efad350d' and the Request URL to https://api.unsplash.com/photos/random, along with the params to query: 'portrait' and orientation: 'squarish'.
-Copy the response, create a new file called types/unsplash.ts in your vscode editor and run the command “Past JSON as Types” (you need to install the Past JSON as Code extension and press CTRL+P to open the run command prompt). That would be enough to automatically create the typings for the random photo endpoint.
+Copy the response, create a new file called types/unsplash.ts in your vscode editor and run the command “Past JSON as Types” (you need to install the [Past JSON as Code extension](https://marketplace.visualstudio.com/items?itemName=quicktype.quicktype) and press CTRL+P to open the run command prompt). That would be enough to automatically create the typings for the random photo endpoint.
 
 Now we can finally implement the REST API call in our picture resolver:
 
