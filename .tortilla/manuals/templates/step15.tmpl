@@ -11,7 +11,7 @@ Start heading to https://unsplash.com/developers and clicking on “Register as 
 If you look at the Documentation (https://unsplash.com/documentation#get-a-random-photo) you’ll notice that in order to retrieve a random photo we have to query the /photos/random endpoint (GET method). We also have to pass some headers for the authent
 cation and some params for the search term and the orientation.
 
-On the browser we would probably use the fetch api, but since on we node we would need a polyfill it’s better to just use a full fledged library like axios:
+On the browser we would probably use the fetch api, but since we are on node we would need a polyfill and it’s better to just use a full fledged library like axios:
 
     yarn add axios
     yarn add -D @types/axios
