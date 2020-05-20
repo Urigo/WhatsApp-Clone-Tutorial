@@ -176,8 +176,6 @@ yarn add axios
 
 We've got everything now so let's migrate UnsplashAPI class and move it from `schema/unsplash.api.ts` under `modules/chats`!
 
-{{{ diffStep "13.3" module="server" files="modules/chats/unsplash.api.ts" }}}
-
 There is no big differences between now and what we had before, the only thing that's changed is the way we make http requests.
 
 The `UnsplashAPI` can be now removed from `dataSources` and moved under Chats module's context:
