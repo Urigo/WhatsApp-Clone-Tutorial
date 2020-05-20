@@ -375,6 +375,10 @@ We should update tests to use SQL instead of in-memory database.
 
 {{{diffStep 11.8 module="server" files="test"}}}
 
+We also added an `initDb()` function to `resetDb` in order to clear and create the tables, and also grant privileges to `testuser` before each test is executed. 
+
+{{{diffStep 11.8 module="server" files="db"}}}
+
 > Because we are running tests against a database, we need to first make sure they run serially, one after the other, 
 > using Jest's `runInBand` option.
 > Also, because during the test we will access a resource (DB) that will keep living, we need to tell Jest to close itself 
