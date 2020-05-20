@@ -558,7 +558,10 @@ Before doing load testing, we need to prepare a bit first. Right now we use `ts-
 
 In order to do it, we need to define the `outDir` in `tsconfig.json` and add a build step.
 
-{{{ diffStep "14.12" module="server" }}}
+{{{ diffStep "14.12" module="server" files=".gitignore" }}}
+{{{ diffStep "14.12" module="server" files="chats.provider.ts" }}}
+{{{ diffStep "14.12" module="server" files="package.json" }}}
+{{{ diffStep "14.12" module="server" files="tsconfig.json" }}}
 
 Next, the script to actually run the server:
 
