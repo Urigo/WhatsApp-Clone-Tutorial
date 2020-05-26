@@ -84,7 +84,7 @@ This way you can easily notice the changes in APIs and migrate your app in no ti
 **Prerequisites for WhatsApp Clone**
 
 > Even if you don't have experience with the technologies below you might still be able to start the tutorial and pick things along the way.
-> If you struggle with anything during the tutorial, contact us on the forum or on Github with your questions.
+> If you struggle with anything during the tutorial, contact us on the forum or on [Github](https://github.com/Urigo/WhatsApp-Clone-Tutorial/discussions) with your questions.
 > It will help us make sure that the tutorial is good for beginners as well
 
 - JavaScript - https://javascript.info/
