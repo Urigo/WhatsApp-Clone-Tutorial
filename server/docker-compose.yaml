@@ -1,0 +1,17 @@
+version: "3.8"
+networks:
+  tortilla:
+services:
+  postgresql:
+    restart: always
+    image: postgres:12.2-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=testuser
+      - POSTGRES_PASSWORD=testpassword
+      - POSTGRES_DB=whatsapp 
+    volumes:
+      - /var/lib/postgresql/data
+    networks:
+      - tortilla

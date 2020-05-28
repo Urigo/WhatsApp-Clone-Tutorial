@@ -30,7 +30,7 @@ const typeDefs = gql`
   type Chat {
     id: ID!
     name: String
-    picture: String
+    picture: URL
     lastMessage: Message
     messages(limit: Int!, after: Float): MessagesResult!
     participants: [User!]!

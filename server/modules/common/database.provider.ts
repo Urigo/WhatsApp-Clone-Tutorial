@@ -13,9 +13,9 @@ export class Database implements OnResponse {
 
   constructor(private pool: Pool) {
     this.loader = new Dataloader(
-      queries =>
+      (queries) =>
         Promise.all(
-          queries.map(async query => {
+          queries.map(async (query) => {
             const db = await this.getClient();
             return db.query(query);
           })

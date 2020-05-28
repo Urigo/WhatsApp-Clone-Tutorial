@@ -1,6 +1,13 @@
-Testing is a crucial part when writing an application, especially if we're planning to publish it or make it a commercial thing. Before we hand someone a product, of any kind, we wanna make sure that it passes certain quality checks. We're signed on that product and so it's very important to ensure that it functions properly according our expectations, otherwise wouldn't wanna use it and will look for alternatives.
+Testing is a crucial part when writing an application, especially if we're planning to publish it or make it a commercial thing. 
+Before we hand someone a product, of any kind, we wanna make sure that it passes certain quality checks. 
+We're signed on that product and so it's very important to ensure that it functions properly according to our expectations, 
+otherwise wouldn't wanna use it and will look for alternatives.
 
-In the context of software, we constantly make changes. It's also inevitable to make all features completely independent from one another, so something in the app is likely to break as we upgrade it or maintain it. That's why we need to write a set of tests that can be run on demand, so when we implement a new feature we can simply run the tests and see what feature broke due to most recent changes.
+In the context of software, we constantly make changes. 
+It's also impossible to make all features completely independent from one another, 
+so something in the app is likely to break as we upgrade it or maintain it. 
+That's why we need to write a set of tests that can be run on demand, 
+so when we implement a new feature we can simply run the tests and see what feature broke due to most recent changes.
 
 There are currently 3 main testing frameworks in the NPM ecosystem: [Jasmine](https://jasmine.github.io/), [Mocha](https://mochajs.org/), and [Jest](https://jestjs.io/). Each testing framework has its pros, and cons, and at the end of the day it's a matter of preference. In our application we're gonna use [Jest](https://jestjs.io/) - a testing framework which was developed by Facebook. What's good about Jest is that it can be used to test both client and server logic, because it runs as a Node.JS application, but it also emulates the browser environment whenever we run it, thanks to [JSDOM](https://github.com/jsdom/jsdom).
 
@@ -10,7 +17,7 @@ In this chapter we will learn how to test the React.Components in the client, an
 
 - Unit tests - which are used to test a single component, independently from other components in our system.
 - Integration tests - which are used to test a component in relation to other components in our systems (how well do they co-work with each other).
-- e2e tests (end to end) - which are used to test a complete, from the moment I clicked on a button in the user interface until the data gets back from the server and shown on the screen.
+- e2e tests (end to end) - which are used to test a complete process, from the moment I clicked on a button in the user interface until the data gets back from the server and shown on the screen.
 
 The efficiency of the tests go from bottom to top (unit -> e2e), but the maintenance and complexity go from bottom to top (e2e -> unit). Accordingly we will need to find a good balance where we don’t spend too much time on writing tests yet have a good indicator for how well our system functions. So we should write a lot of unit tests, a good amount of integration tests and a handful of e2e tests.
 
@@ -54,7 +61,10 @@ Now we can select various HTML elements with a query selector when we test the c
 - The [`@testing-library/jest-dom`](https://www.npmjs.com/package/@testing-library/jest-dom) package will add custom matchers that will help us examine HTML contents of DOM elements.
 - The [`@testing-library/react`](https://www.npmjs.com/package/@testing-library/react) package contains utility methods that will help us test React.Components with Jest.
 
-Next, we will create a file under the `src` folder called `setupTests.ts`. This file is loaded configured automatically by `create-react-app` and loaded by Jest, and we can use it to set up our testing environment according to our needs (like said earlier, Jest can be configured, so this file path can be changed). We will use that file to define a fake Fetch API using the `jest-fetch-mock` library:
+Next, we will create a file under the `src` folder called `setupTests.ts`. 
+This file is configured automatically by `create-react-app` and loaded by Jest, 
+and we can use it to set up our testing environment according to our needs (like said earlier, Jest can be configured, so this file path can be changed). 
+We will use that file to define a fake Fetch API using the `jest-fetch-mock` library:
 
 {{{ diffStep "5.2" module="client" files="src/setupTests.ts" }}}
 

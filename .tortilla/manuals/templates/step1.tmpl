@@ -1,4 +1,9 @@
-The first thing we will do in the tutorial is to start with the UI (User Interface).
+When starting to build an app, there are two points we can start from:
+
+1. Data structure - What data the app stores and produces and what actions can be done to modify that data
+2. The UI (User Interface) - How does the app looks to the user
+
+In this tutorial we will start with the UI (User Interface), but that doesn't mean you should always start there.
 That is the visible part of our app that our users will see and interact with.
 
 In this chapter we will learn how to create a basic React app. 
@@ -14,7 +19,7 @@ and run the `react-app` command to create the basis for our WhatsApp Clone.
 
 In your command line, navigate to the folder you want to put your app's folder in and run:
 
-    $ yarn create react-app whatsapp-clone-client --typescript
+    $ yarn create react-app whatsapp-clone-client --template typescript
 
 > Note how we used the `client` postfix. That's because we're planning to create a server as well on later chapters.
 
@@ -70,7 +75,7 @@ So how do we get the nice React logo that is being rendered onto our screen?
 
 `create-react-app` has scripts that will run the `src/index.tsx` file together with our HTML template, so let's look what this file is doing.
 
-{{{ diffStep "root" module="client" files="public/index.html" }}}
+{{{ diffStep "root" module="client" files="src/index.tsx" }}}
 
 The important thing to see here is that `React` is calling it's render method and telling it to render the `App` component into a document where `id` equals `root`.
 
@@ -91,6 +96,20 @@ Getting React, it is simply calling it by name instead of a path. That means tha
 Under dependencies you can see all the libraries our app currently depends on.
 
 {{{ diffStep "root" module="client" files="package.json" }}}
+
+```
+### Editor ideas notes start:
+
+Version dependencies solver - different ideas
+Multiple versions install vs. single version
+Look at lock files 
+look at npm_modules
+Yarn 2.0
+
+Talk about StrictMode https://reactjs.org/docs/strict-mode.html
+
+### Editor ideas notes end:
+```
 
 You can also see other values in there like `scripts`, which will teach `yarn` new commands that we can use.
 The right side will name the command and the left would be the actual command that it will run.
@@ -230,7 +249,7 @@ Prettier should format your code:
 
 {{{ diffStep "1.3" module="client" files="src/App.tsx" }}}
 
-> Remember to run `yarn prettier` before you comit your changes!
+> Remember to run `yarn format` before you commit your changes!
 
 **End of intro**
 
@@ -316,10 +335,10 @@ function to render a line for each data entry:
 
 When running `map` on the `chats` array, it will run a function for each entry in the array and return a value.
 The function will receive the current entry as a parameter.
-In our case the function will get the current function and will return a JSX line with the data of that specific chat.
+In our case the function will get the current chat and will return a JSX line with the data of that specific chat.
 
 Notice we are also adding the `key` tag with the ID of each chat.
-If you'll remove that and render again you will see the following error inside the console of your [Chrome developer tools](https://developers.google.com/web/tools/chrome-devtools/):
+If you remove that and render again you will see the following error inside the console of your [Chrome developer tools](https://developers.google.com/web/tools/chrome-devtools/):
 `Warning: Each child in a list should have a unique "key" prop`.
 
 By telling React how to identify and distinguish each element using the `key` value we help solve that problem and also making React faster.
@@ -357,12 +376,12 @@ To install:
 	$ yarn add moment
 
 
-And now let's import the library by it's name, wrap the value of each chat and call the `format` function with our requested format:
+And now let's import the library by its name, wrap the value of each chat and call the `format` function with our requested format:
 
 {{{ diffStep "1.12" module="client" files="ChatsList.tsx" }}}
 
 
-If you'll try to run the app you'll see that everything is there, but it's not hard to notice that it's missing some style:
+If you try to run the app you'll see that everything is there, but it's not hard to notice that it's missing some style:
 
 ![naked-chats-list](https://user-images.githubusercontent.com/7648874/54028578-73099b80-41e0-11e9-803a-7469300acb06.png)
 

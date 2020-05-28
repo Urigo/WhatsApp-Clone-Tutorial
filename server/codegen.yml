@@ -17,6 +17,7 @@ generates:
       scalars:
         # e.g. Message.createdAt will be of type Date
         Date: Date
+        URL: string
   ./types/unsplash.d.ts:
     schema: ./logs/main/Unsplash.RandomPhoto.graphql
     plugins:

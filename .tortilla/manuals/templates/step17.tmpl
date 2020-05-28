@@ -30,7 +30,7 @@ We could deduplicate the SQL queries! In order to do that the most obvious libra
 
 Let's install the package and discuss it afterwards:
 
-    npm install dataloader
+    yarn add dataloader
 
 The Dataloader is a library created and maintained by Facebook. It's main purpose is to turn equivalent requests into a single execution. Sounds like a perfect solution, right? It actually is.
 
@@ -319,9 +319,13 @@ Once the `@defer` is used, the server returns an initial response without waitin
 
 ### Dealing with rendering issues
 
-The most naive thing we can do to start noticing performance issues would be loading TONS of data to our app, and make sure that each view is absolutely overwhelmed with information. This way performance issues will start rising above the surface pretty quickly. To do that, we will edit the `resetDb()` method on the server so it can generate large quantities of data. The most comfortable way of controlling that behavior would be through an environment variable that will tell the reset method how much iterations it should run. The more iterations, the more data would be fabricated:
+The most naive thing we can do to start noticing performance issues would be loading TONS of data to our app, and make sure that each view is absolutely overwhelmed with information. 
+This way performance issues will start rising above the surface pretty quickly. 
+To do that, we will edit the `resetDb()` method on the server so it can generate large quantities of data. 
+The most comfortable way of controlling that behavior would be through an environment variable that will tell the reset method how much iterations it should run. 
+The more iterations, the more data would be fabricated:
 
-{{{ diffStep "15.10" module="server" }}}
+{{{ diffStep "14.9" module="server" }}}
 
 It’s important to note that we’ve generated the data in a very specific way where a single user will be the center of the network of data. This way when we log in with that user, we should see our views packed. If it wasn’t for that we would have just had large quantities of data in the DB, but none of it would appear to the end-user.
 
@@ -357,7 +361,7 @@ A common design pattern for fetching data snapshots from a GraphQL back-end is c
 
 We will define our own version of it.
 
-{{{ diffStep "14.9" module="server" }}}
+{{{ diffStep "14.10" module="server" }}}
 
 The `MessagesResult` is built of:
 
@@ -371,11 +375,11 @@ It's stored as `YYYY-MM-DD HH:mm:ss` but we want to expose it as something easie
 
 In order to do it quickly, let's add `date-fns` package:
 
-    npm install date-fns
+    yarn add date-fns
 
 It has `format` method that will help us to do conversions.
 
-We need to the logic of `Chats.findMessagesByChat` method.
+We need to add that logic to the `Chats.findMessagesByChat` method.
 
 {{{ diffStep "14.11" module="server" }}}
 
@@ -458,7 +462,7 @@ We had to split the `ChatRoomScreen` into two pieces. One that includes `ChatPag
 
 Everything is set up, we can now move on and consume the `useInfiniteScroll` in the `MessagesList` component.
 
-{{{ diffStep "15.10" module="client" }}}
+{{{ diffStep "15.10" module="client" files="src/components/ChatRoomScreen/MessagesList.tsx" }}}
 
 We added the `LoadingMore` component with *Loading more messages...* text in it that pops out when fetching is in progress.
 Because the `MessagesList` is not responsible of quering data we don't know exactly when it's completed but we can assume, it happens once the length of `messages` changes.
@@ -558,7 +562,7 @@ Before doing load testing, we need to prepare a bit first. Right now we use `ts-
 
 In order to do it, we need to define the `outDir` in `tsconfig.json` and add a build step.
 
-{{{ diffStep "14.12" module="server" }}}
+{{{ diffStep "14.12" module="server" files=".gitignore, chats.provider.ts, package.json, tsconfig.json" }}}
 
 Next, the script to actually run the server:
 

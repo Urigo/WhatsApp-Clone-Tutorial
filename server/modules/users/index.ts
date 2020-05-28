@@ -9,7 +9,7 @@ const typeDefs = gql`
   type User {
     id: ID!
     name: String!
-    picture: String
+    picture: URL
   }
 
   extend type Query {

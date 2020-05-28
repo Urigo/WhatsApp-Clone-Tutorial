@@ -2,24 +2,24 @@ Currently we have a running app with a single screen which looks stylish and pre
 
 There is something missing though - The data that we are displaying can't be changed in any way.
 
-but even if we'll change the data, there is still a more fundamental issue - all of the data lives on the client.
+But even if we change the data there is still a more fundamental issue - all of the data lives on the client.
 
-That means that each client has it's own copy of the data and the data is not shared between them, 
-if a client will create a new message, only that client will have the new message and not the client that the message was sent to.
+That means that each client has its own copy of the data and the data is not shared between them,
+if a client creates a new message, only that client will have the new message and not the client the message was sent to.
 
-Also if the client will shut down, all data will be lost.
+Also if the client shuts down, all the data will be lost.
 
-So how can we have a place to put data that is being shared between all clients?
+So how can we have a place to put the data that is being shared between all clients?
 
 We should find a central machine that all clients will connect to and get the data from.
 If some client wants to create a new message, it will create it on that central machine so that the next time another clients will ask for the available messages,
 all those messages will be available on the central machine.
 
-That central machine that stores data is called a database. and the machine that communicates between the database and the client is called a server.
+That central machine that stores data is called a database and the machine that communicates between the database and the client is called a server.
 
 In this step, we will write a NodeJS server (server that runs using the Javascript language) and will expose a REST endpoint that will serve the data-mock. 
 We will build the REST application using [Express](https://www.npmjs.com/package/express). 
-Further in this tutorial, we will migrate to using a real data-base with real I/O from the user, because at this point, if the server will shut down, all data will be lost.
+Later in this tutorial we will migrate to using a real data-base with real I/O from the user, because at this point, if the server shuts down all data will be lost.
 
 The plan is to have a server up and running at `localhost:4000` that will expose a `GET /chats` route. 
 Unlike our client application, we're not gonna use any boilerplate and we're gonna set everything up manually. 
@@ -44,14 +44,18 @@ And we will add a startup script to the `package.json` file called `start`:
       "start": "node index.js"
     }
 
-NPM-scripts are just a way to defined an alias for commands. Now we only have one simple script, 
+
+TODO: Format on save
+
+
+NPM-scripts are just a way to define an alias for commands. Now we only have one simple script, 
 but it can turn out to be something very complex depending on our server, so it can be very useful. 
 More about npm-scripts can be found in the [official NPM docs](https://docs.npmjs.com/misc/scripts).
 
 Now we can run our server by running `$ yarn start` and we should see the message "hello world" printed to the console, as expected.
 
 Like in our client's app, we will be using TypeScript.
-In order to use TypeScript we will install few packages:
+In order to use TypeScript we will install a few packages:
 
     $ yarn add --dev typescript ts-node @types/node
 
@@ -78,8 +82,6 @@ Our server is gonna use the following `tsconfig.json` file, feel free to make th
 
 {{{ diffStep "1.2" module="server" files="tsconfig.json" }}}
 
-We need to tell Typescript which files to compile. Those are in the `include` key.
-
 Now let's run `tsc` and see what happens.
 
 We've got a new `index.js` file!  Now let's run it by running `node index.js`.
@@ -87,7 +89,8 @@ We've got a new `index.js` file!  Now let's run it by running `node index.js`.
 That's great, but doing this work each time we change a file can be annoying, 
 so let's use tools to track when files change and make them run the code automatically after.
 
-And we will update the npm-script `start` to use `ts-node`, since we wanna use TypeScript, and not JavaScript directly:
+Let's update the npm-script `start` to use `ts-node`, since we wanna use TypeScript, 
+and not JavaScript directly:
 
     "start": "ts-node index.ts"
 
@@ -102,7 +105,8 @@ Let's install Express and its TypeScript definitions:
     $ yarn add express
     $ yarn add --dev @types/express
 
-Before we implement the `GET /chats` route we will implement a `GET /_ping` route. This route will be used to determine whether the server is up and running or not, and how fast the connection is based on the response time. 
+Before we implement the `GET /chats` route we will implement a `GET /_ping` route. This route will be used to determine whether the server is up and running, 
+and how fast the connection is based on the response time. 
 For every request sent to this route, we should expect a response saying "pong". 
 Some call it "heartbeat", because this route is being tested repeatedly by the hosting machine to check if it's alive, just like a heartbeat in a way. 
 This is how the route should look like:
@@ -119,7 +123,7 @@ command to send a request to the server and we should get a "pong", assuming tha
 
 Just like we talked in the first chapter, some developers write code in a different style than others and since we want to make it consistent, we're going to use **Prettier**.
 
-    $ yarn add -D prettier
+    $ yarn add --dev prettier
 
 We're going to define a npm script called `format`, few styling rules and we're also going to ignore *node_modules*:
 

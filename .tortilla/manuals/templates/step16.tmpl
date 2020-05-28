@@ -108,7 +108,7 @@ You might ask how is that different from what we have already implemented. The c
 There's an another alternative option that forces good patterns and providess a nice to work with API. It's called GraphQL Modules.
 The main goal is to help organize an API and allow to develop it across multiple teams.
 
-yarn add @graphql-modules/core
+    yarn add @graphql-modules/core
 
 Same as Apollo Server's modules, has useful warnings and messages but you can use it with any implementation of GraphQL server.
 
@@ -122,7 +122,8 @@ export default = new GraphQLModule({
 });
 ```
 
-It's a bit similar to what we have in Apollo Modules but as you probably noticed, it's wrapped within `GraphQLModule` class. The class manages a business logic, SDL, resolvers and dependencies between modules.
+It's a bit similar to what we have in Apollo Modules but as you probably noticed, it's wrapped within `GraphQLModule` class. 
+The class manages a business logic, SDL, resolvers and dependencies between modules.
 
 > An important thing to be aware of, GraphQL Modules encapsulates every module. To get a better understanding, think of it as CSS Modules.
 
@@ -172,21 +173,21 @@ We still make use of global context which won't work with GraphQL Modules. To be
 
 The `RESTDataSource` is of course more than a class but in case of Unsplash API we won't loose any important features except the HTTP client. We're going to use `axios` instead:
 
-yarn add axios
+    yarn add axios
 
 We've got everything now so let's migrate UnsplashAPI class and move it from `schema/unsplash.api.ts` under `modules/chats`!
 
-{{{ diffStep "13.3" module="server" files="modules/chats/unsplash.api.ts" }}}
+{{{ diffStep "13.4" module="server" files="modules/chats/unsplash.api.ts" }}}
 
 There is no big differences between now and what we had before, the only thing that's changed is the way we make http requests.
 
 The `UnsplashAPI` can be now removed from `dataSources` and moved under Chats module's context:
 
-{{{ diffStep "13.3" module="server" files="index.ts" }}}
+{{{ diffStep "13.4" module="server" files="index.ts" }}}
 
-{{{ diffStep "13.3" module="server" files="context.ts" }}}
+{{{ diffStep "13.4" module="server" files="context.ts" }}}
 
-{{{ diffStep "13.3" module="server" files="modules/chats/index.ts" }}}
+{{{ diffStep "13.4" module="server" files="modules/chats/index.ts" }}}
 
 #### Dependency Injection in GraphQL Modules
 
@@ -196,7 +197,7 @@ If you're familiar with Dependency Injection then you will get it straight away.
 
 To start working with DI, we we need to install two packages:
 
-yarn add @graphql-modules/di reflect-metadata
+    yarn add @graphql-modules/di reflect-metadata
 
 Let's now adjust the context type and import `reflect-metadata` into the project:
 
@@ -325,26 +326,28 @@ Besides the `currentUser` method we're going to have two more, one to sign in an
 
 #### Exposing server instance
 
-If you would run `yarn test` right now, you will see a lot of errors, every test will fail. That's because we changed our setup but we didn't adjusted tests.
+If you would run `yarn test` right now, you will see a lot of errors, every test will fail. 
+That's because we changed our setup but we didn't adjusted tests.
 
-We're going to change the setup of tests as well so whenever we do something on server it won't affect them. Instead of exposing schema and context as we did before, we're going to base the tests on a ready to use ApolloServer instance.
+We're going to change the setup of tests as well so whenever we do something on server it won't affect them. 
+Instead of exposing schema and context as we did before, we're going to base the tests on a ready to use ApolloServer instance.
 
 In order to achieve it, we need to separate ApolloServer from other server related logic.
 
 {{{ diffStep "13.24" module="server" }}}
-{{{ diffStep "13.25" module="server" }}}
 
 There's one thing that changed and might break our tests, this line fix it:
 
+{{{ diffStep "13.25" module="server" }}}
+
+Remember when I said about benefits of Dependency Injection? Here's one of them. 
+We create a function that overwrites the `currentUser` method so it always returns a specific user.
+
 {{{ diffStep "13.26" module="server" }}}
-
-Remember when I said about benefits of Dependency Injection? Here's one of them. We create a function that overwrites the `currentUser` method so it always returns a specific user.
-
-{{{ diffStep "13.27" module="server" }}}
 
 Let's now migrate all tests and see how easier it is now to manage those. Because we use ApolloServer's instance, we don't need to understand how it's implemented.
 
-{{{ diffStep "13.28" module="server" }}}
+{{{ diffStep "13.27" module="server" }}}
 
 ## Adjusting client
 

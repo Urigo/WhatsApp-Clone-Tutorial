@@ -1,7 +1,7 @@
 import { GraphQLModule } from '@graphql-modules/core';
 import { ProviderScope } from '@graphql-modules/di';
 import { gql } from 'apollo-server-express';
-import { GraphQLDateTime } from 'graphql-iso-date';
+import { DateTimeResolver, URLResolver } from 'graphql-scalars';
 import { Pool } from 'pg';
 import { pool } from '../../db';
 import { Resolvers } from '../../types/graphql';
@@ -12,6 +12,7 @@ const { PostgresPubSub } = require('graphql-postgres-subscriptions');
 
 const typeDefs = gql`
   scalar DateTime
+  scalar URL
 
   type Query {
     _dummy: Boolean
@@ -27,7 +28,8 @@ const typeDefs = gql`
 `;
 
 const resolvers: Resolvers = {
-  DateTime: GraphQLDateTime,
+  DateTime: DateTimeResolver,
+  URL: URLResolver,
 };
 
 const pubsub = new PostgresPubSub({

@@ -58,12 +58,12 @@ In the server project, install GraphQL Code Generator via Yarn
 
     $ yarn add @graphql-codegen/cli --dev
 
-Now GraphQL Code Generator can be used directly from the `scripts` section in the `package.json` file using the `gql-gen` binary. 
+Now GraphQL Code Generator can be used directly from the `scripts` section in the `package.json` file using the `graphql-codegen` binary. 
 We're gonna call the code generation script "codegen":
 
 ```json
 {
-  "codegen": "gql-gen"
+  "codegen": "graphql-codegen"
 }
 ```
 
@@ -111,7 +111,7 @@ And we will define a script:
 
 ```json
 {
-  "codegen": "gql-gen"
+  "codegen": "graphql-codegen"
 }
 ```
 
@@ -159,5 +159,3 @@ TypeScript error: Property 'foo' does not exist on type '{ __typename?: "Chat"; 
 
 TODO: Mappers are not explained - The root types of Message resolvers - doesn’t say much
 we don’t need to use `resolvers as IResolvers`, there’s a flag for it, in codegen
-
-TODO: Change `gql-gen` to `graphql-codegen`

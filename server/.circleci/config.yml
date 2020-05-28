@@ -3,8 +3,8 @@ jobs:
   build:
     working_directory: ~/server/
     docker:
-      - image: circleci/node:12.7.0
-      - image: postgres:11.5-alpine
+      - image: circleci/node:14.2.0
+      - image: postgres:12.2-alpine
         environment:
           POSTGRES_PASSWORD: testpassword
           POSTGRES_USER: testuser

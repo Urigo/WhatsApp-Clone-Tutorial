@@ -40,10 +40,12 @@ export class UnsplashApi {
     );
 
     try {
-      return (await trackedRandomPhoto({
-        query: 'portrait',
-        orientation: 'squarish',
-      })).urls.small;
+      return (
+        await trackedRandomPhoto({
+          query: 'portrait',
+          orientation: 'squarish',
+        })
+      ).urls.small;
     } catch (err) {
       console.error('Cannot retrieve random photo:', err);
       return null;

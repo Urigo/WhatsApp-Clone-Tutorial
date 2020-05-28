@@ -29,9 +29,9 @@ export class Chats {
 
   private chatsCache = new Map<string, Chat>();
   private loaders = {
-    chats: new DataLoader<ChatsKey, QueryResult['rows']>(keys => {
+    chats: new DataLoader<ChatsKey, QueryResult['rows']>((keys) => {
       return Promise.all(
-        keys.map(async query => {
+        keys.map(async (query) => {
           if (isChatsByUser(query)) {
             return this._findChatsByUser(query.userId);
           }
@@ -61,7 +61,7 @@ export class Chats {
       AND chats_users.user_id = ${userId}
     `);
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       this._writeChatToCache(row);
     });
 
@@ -145,7 +145,9 @@ export class Chats {
     messages.reverse();
 
     // cursor is a number representation of created_at
-    const cursor = messages.length ? new Date(messages[0].created_at).getTime() : 0;
+    const cursor = messages.length
+      ? new Date(messages[0].created_at).getTime()
+      : 0;
     const { rows: next } = await this.db.query(
       sql`SELECT * FROM messages WHERE chat_id = ${chatId} AND created_at < ${cursorToDate(
         cursor
@@ -326,5 +328,5 @@ export class Chats {
 }
 
 function cursorToDate(cursor: number) {
-  return `'${format(cursor, 'YYYY-MM-DD HH:mm:ss')}'`;
+  return `'${format(cursor, 'yyyy-MM-dd HH:mm:ss')}'`;
 }

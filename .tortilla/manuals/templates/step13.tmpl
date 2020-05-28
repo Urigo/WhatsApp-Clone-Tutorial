@@ -71,7 +71,7 @@ Updating `codegen.yml` to include the file we've just added in the generation pr
 
 And finally, we will update the service to use the generated mutation method `useSignInMutation()`:
 
-{{{ diffStep 13.2 module="client" files="auth.service.ts" }}}
+{{{ diffStep 13.2 module="client" files="auth.service" }}}
 
 To check if we’re authorized to visit a route, not only we would need to check if we have the `authToken` cookie defined, but we would also need to validate it against the server to see that it actually references a real user. For that we will implement `Query.me` which will send us back the current user logged in directly from the context:
 
