@@ -6,13 +6,17 @@ a method for sending and applying mutations in our back-end.
 
 **What are GraphQL mutations?**
 
-If you have an API endpoint that alters data, like inserting data into a database or altering data already in a database, 
+If you have an API endpoint that alters data, like inserting data into a database or altering data that's already in a database, 
 you should make this endpoint a `Mutation` rather than a `Query`. 
 This is as simple as making the API endpoint part of the top-level `Mutation` type instead of the top-level `Query` type.
 
-It's often convenient to have a mutation that maps to a database create or update operation, return the same thing that the server stored. 
+Mutation is a remote procedure call (RPC), meaning it is used to trigger a function on the server,
+but unlike other protocols which have RPCs, GraphQL Mutation also includes a query, which means the client can ask for data
+once the operation is complete.
+
+It's often convenient to have a mutation that maps to a database create or update operation and have it return the same thing that the server stored. 
 That way, if you modify the data on the server, the client can learn about those modifications. 
-**A GraphQL mutation is like a GraphQL query, only with side effects**. 
+You can also think about a GraphQL Mutation as a ** GraphQL query, only with side effects**. 
 It's equivalent to GET (query) and POST/PUT (mutation) in the context of REST API.
 
 Below is a sample GraphQL mutation request:
@@ -34,9 +38,16 @@ In this chapter we want to have the ability to send messages, thus we will have 
 
 {{{ diffStep 5.1 module="server" files="typeDefs" }}}
 
-Note that our mutation resolver `addMessage` receives a `chatId`. This is because when adding a message, we should update both the messages collection, and the correlated chat document. Mutations are resolved exactly like any other type in our resolvers manifest. The new resolver should look like this:
+Note that our mutation resolver `addMessage` receives a `chatId` and it is a non-optional parameter. 
+This is because when adding a message, we should update both the messages collection, and the correlated chat document. 
+
+Mutations are resolved exactly like any other type in our resolvers manifest. The new resolver should look like this:
 
 {{{ diffStep 5.1 module="server" files="resolvers" }}}
+
+When we add a message, we first find the right chat, 
+then we generate a new message ID that is bigger then all the previous messages (when we'll move to a real database it will do that for us)
+and push the message into the right chat.
 
 In terms of testing, we will use a temporary solution for now to reset the DB each time we test a mutation. Since we make a modification in the DB, we need to make sure that each test is completely agnostic and doesn't affect one another, thus, we will export a `resetDB()` method from our `db.ts` module:
 
@@ -51,7 +62,7 @@ Now we have the infrastructure set for sending a new message and we can start us
 **How to use a GraphQL mutation?**
 
 Like in the previous chapters, we're gonna use a React hook so we can run a mutation more efficiently in a React.Component. 
-For this we're gonna use the [`useMutation()`](https://github.com/trojanowski/react-apollo-hooks#usemutation) react hook. 
+For this we're gonna use the [`useMutation()`](https://www.apollographql.com/docs/react/essentials/mutations/#the-usemutation-hook) react hook. 
 The first argument of the hook is the mutation string, and the second one is the [mutation options](https://www.apollographql.com/docs/react/api/apollo-client.html#ApolloClient.mutate). 
 We're gonna provide our mutation call with a single option called `optimisticResponse`.
 

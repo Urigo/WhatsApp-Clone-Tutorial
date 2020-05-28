@@ -22,6 +22,8 @@ It will create a directory called `whatsapp-clone-client` inside the current fol
 Inside that directory, it will generate the initial project structure and install the needed dependencies.
 No configuration or complicated folder structures, just the files you need to build your app. 
 
+### Review the generated code
+
 > In our project, we're gonna use [TypeScript](https://www.typescriptlang.org/) (indicated by the `--typescript` command).
 > The main advantage of using TypeScript over using plain JavaScript is that if we want, we get to tell the compiler what types and data structures we expect in certain places, 
 > so that the compiler (which unlike a human never forgets) will remind us when we make a mistake and assume something that is not true.
@@ -35,7 +37,7 @@ Inside the newly created project, you can run some built-in commands:
 
 	$ yarn start
 
-Runs the app in development mode. Open `http://localhost:3000` to view it in the browser:
+Runs the app in development mode. Open `[http://localhost:3000](http://localhost:3000)` to view it in the browser:
 
 ![boilerplate-page](https://user-images.githubusercontent.com/7648874/54026782-025f8080-41da-11e9-9a4e-796fe15e8d03.png)
 
@@ -45,6 +47,8 @@ Let's look at what create-react-app has created for us in order to understand ev
 
 First thing, let's look at what webpage is being served to the browser.
 That webpage in `index.html` that sits under the `public` folder.
+
+{{{ diffStep "root" module="client" files="public/index.html" }}}
 
 As you can see, this file is a regular HTML file. You will want to edit it's `<title>` to name our real app:
 
@@ -65,7 +69,10 @@ Now the HTML file has in it's <body> tag just one `<div id="root"></div>` tag wh
 So how do we get the nice React logo that is being rendered onto our screen?
 
 `create-react-app` has scripts that will run the `src/index.tsx` file together with our HTML template, so let's look what this file is doing.
-The important thing to see here is the `React` is calling it's render method and telling it to render the `App` component into a document where `id` equals `root`.
+
+{{{ diffStep "root" module="client" files="public/index.html" }}}
+
+The important thing to see here is that `React` is calling it's render method and telling it to render the `App` component into a document where `id` equals `root`.
 
 So now you know where React is coming into our html template.
 
@@ -83,10 +90,15 @@ Getting React, it is simply calling it by name instead of a path. That means tha
 
 Under dependencies you can see all the libraries our app currently depends on.
 
+{{{ diffStep "root" module="client" files="package.json" }}}
+
 You can also see other values in there like `scripts`, which will teach `yarn` new commands that we can use.
 The right side will name the command and the left would be the actual command that it will run.
 
-Another file that got created is `tsconfig.json`. 
+Another file that got created is `tsconfig.json`:
+
+{{{ diffStep "root" module="client" files="tsconfig.json" }}}
+
 That file specifies options for the Typescript compiler when it takes our code and transforms it from Typescript into Javascript.
 
 Some noticeable configuration options for that file are:
@@ -98,7 +110,9 @@ If you know that your app would run only on newer browsers or a Node environment
 
 For the full set of options, check out the [official docs](https://www.typescriptlang.org/docs/handbook/compiler-options.html);
 
-Now, let's look at our App's code in `src/App.tsx`.
+Now, let's look at our App's code in `src/App.tsx`:
+
+{{{ diffStep "root" module="client" files="App.tsx" }}}
 
 We can see that our app is just a function named `App`.
 
@@ -119,21 +133,23 @@ something will import our component.
 
 The last thing we haven't explained is the following part: `App: React.FC`.
 Those are Typescript typings. Everything after `:` describes the types of the `App` variable and has no affect on the behavior and execution of the app.
-It will tell Typescript what `App` is suppose to look so that in case we make a mistake Typescript will warn us before we get the app running.
+It will tell Typescript how `App` is supposed to look like, so that in case we make a mistake, Typescript will warn us before we get the app running.
 
 So what are the types of React.FC?  You can check it out inside by using command+click on it's name. 
 You see that it accepts `P` as props into the component and needs to return `React.Element` or `null`.
 
-Let's test this out, add a Typescript interface named `AppProps` and put that it includes a property called `name` of type string.
+Let's test out how typescript typings work: Declare a Typescript interface named `AppProps` that includes a property called `name` of type string. Now use that interface to describe the shape that app's props should have: update the line that declares app to `const App: React.FC<AppProps> = ({name}) => {`
 
-Now let's try to return something invalid. `"some string"`, or `1+1`.
-You can see that our editor is calling out that there are errors in our code.
+Now open the file `src/index.tsx`. 
+You can see that our editor is calling out that there is an error in our code because no name prop is passed to the App component.
 
-You will encounter those error a lot as you develop.
-Always read the errors all the way. Understand each sentence there because that will save you a lot of time.
+You will encounter those errors a lot as you develop.
+Always read the errors all the way. Take your time to understand each sentence there because that will save you a lot of time.
+That is true also when you are not programming and just encounter errors in the apps you are using...
 
-Ok we now know the component doesn't get anything into itself so let's make sure the typings reflect that as well.
-The default for React.FC is that there are no props passed inside so if we'll bring that back but keep sending the `name` value from `index.tsx` in the code, you should now get an error.
+As the error message suggests, give the App component a name prop. If you pass a prop that is not a string like `true` or `1+1`, TypeScript will let you know with an error.
+
+The default for React.FC is that there are no props passed inside so if we'll bring that back but keep sending the `name` value from `index.tsx` in the code, you should now get an error because you are passing a props that the component doesn't accept.
 
 Those errors can be very useful when your app grows.
 Make sure to define types on the component itself like we have done now. It would make it easier to identify the issues.
@@ -145,7 +161,7 @@ Later on we'll learn better strategies of sorting our styles and making
 sure they are not touching components that we don't want them to affect.
 
 Next file - `App.test.tsx`.  
-This file contains automatic tests to make sure our app is doing what it's suppose to do.
+This file contains automatic tests to make sure our app is doing what it's supposed to do.
 
 We are programmers, that means that many times our job is to take something manual and making it automatic.
 That's why we should also strive to automate things we do ourselves.
@@ -169,7 +185,7 @@ you can see the `^` sign.  That means that every time someone will get this code
 We don't want that. We want to first be notified when a new version is out and we want to explicitly update it.
 
 That's why we need to add 2 things into our code:
-First, to delete all `^`.
+First, to delete all `^` (while also let's update all dependencies to their current latest).
 
 {{{ diffStep "1.2" module="client" files="package.json" }}}
 
@@ -196,6 +212,26 @@ Here is a nice guide to start: https://try.github.io/.
 You can check out the `.gitignore` file create-react-app has set up for us in the root folder. 
 That file will tell `.git` what not to save and not to upload.
 
+## Code formatting
+
+Some developers write code in a different style than others and it might be annoying while doing code reviews or even merging conflicts. That's why we want to make it consistent. We're going to use **Prettier** which has an opinionated set of styling rules and supports many languages. Your IDE most likely supports it too.
+
+    $ yarn add prettier
+
+We're going to define a npm script called `format`, few styling rules and we're also going to ignore *node_modules*:
+
+{{{ diffStep "1.3" module="client" files="package.json, .prettierrc.yml, .prettierignore" }}}
+
+Now let's run:
+
+    $ yarn format
+
+Prettier should format your code:
+
+{{{ diffStep "1.3" module="client" files="src/App.tsx" }}}
+
+> Remember to run `yarn prettier` before you comit your changes!
+
 **End of intro**
 
 Assuming that everything is set, we will now create our first screen - `ChatsListScreen`. 
@@ -216,11 +252,11 @@ First let's remove the current React code and add our own code into it.
 
 For now, let's create fake data on our HTML.
 
-Add this data will be changed and we are not going to manually add HTML tags every time there is a new message, let's move our data into a JSON structure.
+As this data will be changed and we are not going to manually add HTML tags every time there is a new message, let's move our data into a JSON structure.
 For now it would be a structure we will manually create.
-That way we can make our React component already behave like our final version.
+That way we can already make our React component behave like our final version.
 
-{{{ diffStep "1.3" module="client" files="App.tsx" }}}
+{{{ diffStep "1.4" module="client" files="App.tsx" }}}
 
 If all we do in the function is just returning a value, instead of `const App: React.FC = () => { return () };` we can also do `const App: React.FC = () => ();`
 So let's use that for our ChatsList component.
@@ -233,15 +269,15 @@ As we don't use those styles and logos anymore, we can delete the `src/App.css` 
 
 Now let's move ChatsList into it's own component:
 
-{{{ diffStep "1.4" module="client" files="ChatsList.tsx" }}}
+{{{ diffStep "1.5" module="client" files="ChatsList.tsx" }}}
 
 and let's import that component into the App component and use the shorter syntax for the functional component:
 
-{{{ diffStep "1.4" module="client" files="App.tsx" }}}
+{{{ diffStep "1.5" module="client" files="App.tsx" }}}
 
 and let's do the same for our Navbar:
 
-{{{ diffStep "1.5" module="client" }}}
+{{{ diffStep "1.6" module="client" }}}
 
 React apps tend to store React.Components under a directory located at `src/components`, and so we're gonna follow this pattern. 
 We will create a directory called ChatsListScreen in the `components` dir where we're simply gonna import and put together the Navbar and ChatsList components. 
@@ -254,7 +290,7 @@ This is how the contents of that directory should look like:
 
 We will use the `index.tsx` file to define that component, this way we can import it using the directory name:
 
-{{{ diffStep "1.6" module="client" }}}
+{{{ diffStep "1.7" module="client" }}}
 
 Now, we have our app rendering our view, but it is completely static and manual in the code.
 
@@ -265,18 +301,18 @@ So let's create a file that lists just the data of our chats and then make our R
 
 We will create the file in a JSON format:
 
-{{{ diffStep "1.7" module="client" files="db.ts" }}}
+{{{ diffStep "1.8" module="client" files="db.ts" }}}
 
 We are giving IDs for the values just like a database gives a unique id for each value.
 
-The is so we can reference specific values, for example, 
+This is so we can reference specific values, for example, 
 last message would actually reference the other array instead of duplicating the values.
 
 Now let's change ChatsList component to import the data from that file.
 Then to use the Javascript [map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map) 
 function to render a line for each data entry:
 
-{{{ diffStep "1.7" module="client" files="ChatsList.tsx" }}}
+{{{ diffStep "1.8" module="client" files="ChatsList.tsx" }}}
 
 When running `map` on the `chats` array, it will run a function for each entry in the array and return a value.
 The function will receive the current entry as a parameter.
@@ -289,9 +325,9 @@ If you'll remove that and render again you will see the following error inside t
 By telling React how to identify and distinguish each element using the `key` value we help solve that problem and also making React faster.
 Read [here](https://reactjs.org/docs/lists-and-keys.html) for more in depth explanation.
 
-Now that we rendered a line for each chat, let's add also the last message's content and creation date for each chat:
+Now that we've rendered a line for each chat, let's add also the last message's content and creation date for each chat:
 
-{{{ diffStep "1.8" module="client" }}}
+{{{ diffStep "1.9" module="client" }}}
 
 Try to run the app again.
 
@@ -300,7 +336,7 @@ This is because Typescript is smart enough and tells us there might be no last m
 So we add a check.
 Remember to always check for null or undefined if optional, don’t write shorter write safer:
 
-{{{ diffStep "1.9" module="client" }}}
+{{{ diffStep "1.10" module="client" }}}
 
 Now let's try again.
 
@@ -308,7 +344,7 @@ Now we have a syntax error - A JSX return value can't have more then a single ro
 So in order to return a root element from the function but still display multiple elements in the same level,
 we can use [React.Fragment](https://reactjs.org/docs/fragments.html) to wrap the returned elements:
 
-{{{ diffStep "1.10" module="client" }}}
+{{{ diffStep "1.11" module="client" }}}
 
 
 Let's try again.  This time it looks like the format is not correct, so let's format the date using the `moment` library.
@@ -323,7 +359,7 @@ To install:
 
 And now let's import the library by it's name, wrap the value of each chat and call the `format` function with our requested format:
 
-{{{ diffStep "1.11" module="client" files="ChatsList.tsx" }}}
+{{{ diffStep "1.12" module="client" files="ChatsList.tsx" }}}
 
 
 If you'll try to run the app you'll see that everything is there, but it's not hard to notice that it's missing some style:

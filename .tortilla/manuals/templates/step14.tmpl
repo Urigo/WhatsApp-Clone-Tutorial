@@ -42,29 +42,41 @@ You can read more about those relations in [here](https://www.techrepublic.com/a
 In existing entity declarations and schema, we have 6 relationships;
 
 * Message has a One To Many relationship under the name of `chat` inside our schema; so one message can have one chat while one chat can have multiple messages.
-    gql```
-    type Message { chat: Chat }
-    ```
+
+```gql
+type Message { chat: Chat }
+```
+
 * Message has another One To Many relationship under the name of `sender`` inside our schema; so one message can have one sender while one sender user can have multiple messages.
-    gql```
-    type Message { sender: User }
-    ```
+
+```gql
+type Message { sender: User }
+```
+
 * Message has one more One To Many relationship under the name of `recipient`` inside our schema; so one message can have one recipient while one recipient user can have multiple messages.
-    gql```
-    type Message { recipient: User }
-    ```
+
+```gql
+type Message { recipient: User }
+```
+
 * Chat has a One To Many relationship under the name of `messages`, because one chat can have multiple messages while one message can have only one chat. Notice that this relationship is the reversed version of the first relationship in Message. 
-    gql```
-    `type Chat { messages: [Message] }
-    ```
+
+```gql
+`type Chat { messages: [Message] }
+```
+
 * Chat has another Many To Many relationship under the name of `participants`, because one chat can have multiple participants while a participant can have multiple chats as well.
-    gql```
-    type Chat { participants: [User] }
-    ```
+
+```gql
+type Chat { participants: [User] }
+```
+
 * User has a Many To Many relationship under the name of `chats`, because one user can have multiple chats, while it has the same situation for chats.
-    gql```
-    type User { chats: [Chat] }
-    ```
+
+```gql
+type User { chats: [Chat] }
+```
+
 
 So we should decide the dependencies between each other to add columns and tables to our database.
 
@@ -139,6 +151,17 @@ If you have Debian package manager on your machine, you can install PostgreSQL i
 ***Other environments***
 
 Check [https://www.postgresql.org/download/](PostgreSQL website) for installation instructions on other environments.
+
+Following above link, after initializing the database using: 
+```
+postgresql-setup initdb
+```
+Navigate to /var/lib/pgsql/11/data/pg_hba.conf and edit IPv4 local connections to:
+```
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            trust
+```
+By doing so you are setting PostgreSQL permissions so your WhatsApp server can access the database.
 
 **Creating Database, Database User and Tables**
 
@@ -283,7 +306,7 @@ We should update our entity typings according to our new database tables and col
 
 We need to update the `resetDb` function to add a sample data to our new relational database instead of in-memory database. But we will call `resetDb` if it is asked by using the environmental variable.
 
-{{{diffStep 11.5 module="server" files="db"}}}
+{{{diffStep 11.5 module="server" }}}
 
 > When you update tables with your own ID values, you have to update `SEQUENCE`; because PostgreSQL calculates the next ID value using `SEQUENCE`s.
 
@@ -313,6 +336,13 @@ Install the necessary packages;
 We should update tests to use SQL instead of in-memory database.
 
 {{{diffStep 11.8 module="server" files="test"}}}
+
+> Because we are running tests against a database, we need to first make sure they run serially, one after the other, 
+> using Jest's `runInBand` option.
+> Also, because during the test we will access a resource (DB) that will keep living, we need to tell Jest to close itself 
+> after the test is done, using the `forceExit` option
+
+{{{diffStep 11.8 module="server" files="package.json"}}}
 
 **Remove in-memory database**
 

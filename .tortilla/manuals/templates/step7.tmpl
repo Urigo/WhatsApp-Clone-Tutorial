@@ -34,17 +34,19 @@ We will create a new file in the `src` directory called `client.ts` and inside w
 {{{ diffStep 7.1 module="client" files="client" }}}
 
 Although the client can be used directly and integrated into any UI framework, it would be the most comfortable to use a wrap around it which is suitable for React. 
-For that we will use a package called [`react-apollo-hooks`](https://www.npmjs.com/package/react-apollo-hooks) which includes a set of [React hooks](https://reactjs.org/docs/hooks-intro.html) that can connect between our Apollo-Client and target React.Component:
+For that we will use Apollo's React Hooks package called [`@apollo/react-hooks`](https://github.com/apollographql/react-apollo) which includes a set of 
+[React hooks](https://reactjs.org/docs/hooks-intro.html) that can connect between our Apollo-Client and target React.Component:
 
-    $ yarn add react-apollo-hooks graphql-tag graphql
+    $ yarn add @apollo/react-hooks graphql-tag graphql
 
-With `react-apollo-hooks` we can use the `useQuery()` hook to fetch data from our GraphQL API. 
-The `graphql-tag` package is used to parse the GraphQL string to an [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree), something which is required when using Apollo Client. Example:
+With `@apollo/react-hooks` we can use the `useQuery()` hook to fetch data from our GraphQL API. 
+The `graphql-tag` package is used to parse the GraphQL string to an [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree), 
+something which is required when using Apollo Client. Example:
 
 
 ```
 import gql from 'graphql-tag';
-import { useQuery } from 'react-apollo-hooks';
+import { useQuery } from '@apollo/react-hooks';
 
 const GET_DOGS = gql`
   {

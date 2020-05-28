@@ -19,7 +19,7 @@ declare module 'apollo-server-testing' {
   };
 
   export const createTestClient: <TVariables>(
-    server: ApolloServerBase,
+    server: ApolloServerBase
   ) => {
     query: (query: Query<TVariables>) => Promise<GraphQLResponse>;
     mutate: (mutation: Mutation<TVariables>) => Promise<GraphQLResponse>;

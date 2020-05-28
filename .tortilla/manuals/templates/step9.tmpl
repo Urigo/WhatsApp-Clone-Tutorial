@@ -31,7 +31,7 @@ export type ChatQuery = {
 
 ```
 
-So later on we can use it with `react-apollo-hooks` like so:
+So later on we can use it with `@apollo/react-hooks` like so:
 
 ```ts
 useQuery<ChatsQuery>(getChatsQuery)
@@ -93,6 +93,11 @@ And write the `codegen.yml` file:
 Now if you'll run `$ npm run codegen` you should see that a new file `types/graphql.d.ts` has been generated with all the necessary TypeScript types. Since these types are very likely to change as we extend our schema, there's no need to include them in our project, thus it's recommended to add the appropriate .gitignore rule:
 
 {{{ diffStep 6.1 module="server" files=".gitignore" }}}
+
+Now to make sure we always get the updated types, let's add a task that would run automatically before we start the server.
+`prestart` is a saved word that means that when we run `yarn start` it will run that task automatically before running the script in `start`:
+
+{{{ diffStep 6.1 module="server" files="package.json" }}}
 
 Now we can import the `IResolvers` type from the file we've just created and use it in the `resolvers.ts` file to ensure our resolvers handlers have the right signature:
 

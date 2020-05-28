@@ -32,7 +32,7 @@ const resolvers: Resolvers = {
 
 const pubsub = new PostgresPubSub({
   host: 'localhost',
-  port: 5432,
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
   user: 'testuser',
   password: 'testpassword',
   database: 'whatsapp',

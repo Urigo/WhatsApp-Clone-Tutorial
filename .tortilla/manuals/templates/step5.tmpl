@@ -48,11 +48,11 @@ Now we're gonna write a basic test for the `<ChatsList />` component. In the tes
 
 Now we can select various HTML elements with a query selector when we test the component. We will install a couple of packages that will assist us in implementing the test:
 
-  $ yarn add jest-fetch-mock jest-dom react-testing-library
+    $ yarn add jest-fetch-mock @testing-library/jest-dom @testing-library/react
 
 - The [`jest-fetch-mock`](https://www.npmjs.com/package/jest-fetch-mock) package can mock responses emitted by the Fetch API.
-- The [`jest-dom`](https://www.npmjs.com/package/jsdom) package will add custom matchers that will help us examine HTML contents of DOM elements.
-- The [`react-testing-library`](https://www.npmjs.com/package/react-testing-library) package contains utility methods that will help us test React.Components with Jest.
+- The [`@testing-library/jest-dom`](https://www.npmjs.com/package/@testing-library/jest-dom) package will add custom matchers that will help us examine HTML contents of DOM elements.
+- The [`@testing-library/react`](https://www.npmjs.com/package/@testing-library/react) package contains utility methods that will help us test React.Components with Jest.
 
 Next, we will create a file under the `src` folder called `setupTests.ts`. This file is loaded configured automatically by `create-react-app` and loaded by Jest, and we can use it to set up our testing environment according to our needs (like said earlier, Jest can be configured, so this file path can be changed). We will use that file to define a fake Fetch API using the `jest-fetch-mock` library:
 
@@ -105,6 +105,9 @@ so we can run the tests with `$ yarn test`:
 ```
 
 This is how our `package.json` should look like at this point:
+
+> Notice we have lines there that mention `jest-junit`. 
+> Those are needed for our own tutorial CI, you don't have to use it.
 
 {{{ diffStep "3.1" module="server" files="package.json" }}}
 

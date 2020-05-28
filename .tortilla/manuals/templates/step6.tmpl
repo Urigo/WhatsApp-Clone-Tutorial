@@ -4,14 +4,14 @@ In order to navigate between different screens, we will setup a router.
 Since we're gonna have to screens in our app now - `ChatsListScreen` and `ChatRoomScreen`, we will need a router that will be able to alternate between them. 
 We will be using the [`react-router-dom`](https://www.npmjs.com/package/react-router-dom) package to manage the routes of the application:
 
-    $ yarn add react-router-dom
+    $ yarn add react-router-dom @types/react-router-dom
 
 And we will implement a router directly in the `<App />` component:
 
 {{{ diffStep 6.1 module="client" files="App" }}}
 
 The purpose of a router is to make route managing easy and declarative. 
-It will take care of managing the history within our app and parameterizing certain screens according to our need. 
+It will take care of managing the history within our app and parameterize certain screens according to our need. 
 Essentially it's a wrap around the `window.history` object which is also compatible with React. 
 I recommend you to go through the [official MDN docs](https://developer.mozilla.org/en-US/docs/Web/API/History) if you're not yet familiar with the concept.
 
@@ -168,6 +168,10 @@ And finally, would be the `MessageInput` component which will trigger an event w
 Now that we have all 3 components, we will put them all together in the main `index.ts` file:
 
 {{{ diffStep 6.6 module="client" files="index" }}}
+
+And let's also send the new required `history` props to our `ChatRoomScreen` component:
+
+{{{ diffStep 6.6 module="client" files="App.tsx" }}}
 
 The view is complete! However the `MessageInput` is not bound to our messages list. 
 We will use the triggered callback to update the chat state, whose changes should appear in the `MessagesList` component in the following render phase:

@@ -33,11 +33,22 @@ Now we will update the resolvers to fetch data relatively to the current user lo
 
 {{{ diffStep 8.2 module="server" files="schema, tests" }}}
 
-Now if we will get back to the app and refresh the page, we should see a new chats list which is only relevant to Ray Edwards. Earlier in this chapter, we've defined a new `isMine` field on the `Message` type. This field is useful because now we can differentiate between messages that are mine and messages that belong to the recipient. We can use that information to distinct between messages in our UI.
+Now if we will get back to the app and refresh the page, we should see a new chats list which is only relevant to Ray Edwards. 
+Earlier in this chapter, we've defined a new `isMine` field on the `Message` type. 
+This field is useful because now we can differentiate between messages that are mine and messages that belong to the recipient. 
+We can use that information to distinct between messages in our UI.
+
+But we should also take into account the current user when we publish real-time subscription events.
+
+We will check if there is a logged in user and if the users is part of the actual conversation before we publish:
+
+{{{ diffStep 8.3 module="server" }}}
 
 Let's first download a new image that will help us achieve the new style and save it under the [`src/public/assets/message-yours.png`](https://github.com/Urigo/WhatsApp-Clone-Client-React/blob/cordova/public/assets/message-other.png?raw=true) path. Then let's implement the new style:
 
 {{{ diffStep 11.1 module="client" files="src/components" }}}
+
+{{{ diffStep 11.1 module="client" files="message.fragment.ts" }}}
 
 This is how the updated `ChatRoomScreen` should look like:
 
@@ -126,12 +137,11 @@ We will use this function to wrap the right components in our app’s router. No
 
 Assuming that you’re not logged-in, if you’ll try to force navigate to the `/chats` route you should be automatically redirected to the `/sign-in` form. We will finish the chapter here as we wanna keep things simple and gradual. It’s true that we haven’t implemented true authentication, but that would be addressed soon further in this tutorial.
 
----------
+{{#noop}}
+  TODO: minor change, which might be helpful for people in long term. That’s a small but powerful thing to know about in TypeScript
+  + recipient: chat.participants.find(p => p !== currentUser.id)!
+  - recipient: chat.participants.find(p => p !== currentUser.id) as string
 
-TODO: minor change, which might be helpful for people in long term. That’s a small but powerful thing to know about in TypeScript
-+ recipient: chat.participants.find(p => p !== currentUser.id)!
-- recipient: chat.participants.find(p => p !== currentUser.id) as string
-
-
-TODO: I don’t think we need `if (props.history.location.pathname === '/sign-in') return null`
-since withAuth HOC is not used on `AuthScreen` component
+  TODO: I don’t think we need `if (props.history.location.pathname === '/sign-in') return null`
+  since withAuth HOC is not used on `AuthScreen` component
+{{/noop}}

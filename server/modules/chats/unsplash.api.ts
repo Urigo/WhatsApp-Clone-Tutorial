@@ -36,7 +36,7 @@ export class UnsplashApi {
         provider: 'Unsplash',
         method: 'RandomPhoto',
         location: resolve(__dirname, '../logs/main'),
-      },
+      }
     );
 
     try {

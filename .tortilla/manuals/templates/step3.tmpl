@@ -40,7 +40,9 @@ Just to make sure that things work, we will add an `index.js` file which will pr
 
 And we will add a startup script to the `package.json` file called `start`:
 
-    "start": "node index.js"
+    "scripts": {
+      "start": "node index.js"
+    }
 
 NPM-scripts are just a way to defined an alias for commands. Now we only have one simple script, 
 but it can turn out to be something very complex depending on our server, so it can be very useful. 
@@ -87,7 +89,7 @@ so let's use tools to track when files change and make them run the code automat
 
 And we will update the npm-script `start` to use `ts-node`, since we wanna use TypeScript, and not JavaScript directly:
 
-    start: ts-node index.ts
+    "start": "ts-node index.ts"
 
 We can test the startup of our server again by running `$ yarn start` and we should see the message "hello world" printed to the console.
 
@@ -109,18 +111,39 @@ This is how the route should look like:
 
 We can use the 
 
-        `$ curl localhost:4000/_ping` 
+        $ curl localhost:4000/_ping
         
 command to send a request to the server and we should get a "pong", assuming that the server available on that URL. 
+
+**Code formatting**
+
+Just like we talked in the first chapter, some developers write code in a different style than others and since we want to make it consistent, we're going to use **Prettier**.
+
+    $ yarn add -D prettier
+
+We're going to define a npm script called `format`, few styling rules and we're also going to ignore *node_modules*:
+
+{{{ diffStep "1.4" module="server" files="package.json, .prettierrc.yml, .prettierignore" }}}
+
+Now let's run:
+
+    $ yarn format
+
+Prettier should format your code:
+
+{{{ diffStep "1.4" module="server" files="index.ts" }}}
+
+> Remember to run `yarn prettier` before you comit your changes!
+
 The `GET /chats` should be implemented similarly, only the response is different. Instead of returning "pong" we will return the data-mock for our chats:
 
-{{{ diffStep "1.4" module="server" files="index.ts, db.ts" }}}
+{{{ diffStep "1.5" module="server" files="index.ts, db.ts" }}}
 
 TODO: Mention `_req`
 
-Check we can get the chats by running:
+Check that we can get the chats by running:
 
-        `$ curl localhost:4000/chats`
+        $ curl localhost:4000/chats
 
 Unlike the previous route, we used the `.json()` method this time around to send a response. This will simply stringify the given JSON and set the right headers. 
 Similarly to the client, we've defined the db mock in a dedicated file, as this is easier to maintain and look at.
@@ -137,7 +160,7 @@ and its Typescript types:
 
     $ yarn add --dev @types/cors
 
-{{{ diffStep "1.4" module="server" files="index.ts" }}}
+{{{ diffStep "1.6" module="server" files="index.ts" }}}
 
 The server is now ready to use! 
 

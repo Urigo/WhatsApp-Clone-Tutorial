@@ -1,38 +1,78 @@
-import { Pool } from "pg";
-import sql from 'sql-template-strings'
-import { resetDb as envResetDb } from './env'
+import { Pool } from 'pg';
+import sql from 'sql-template-strings';
+import faker from 'faker';
+import addMinutes from 'date-fns/add_minutes';
+import { resetDb as envResetDb, fakedDb } from './env';
 
 export type User = {
-  id: string
-  name: string
-  username: string
-  password: string
-  picture: string
-}
+  id: string;
+  name: string;
+  username: string;
+  password: string;
+  picture: string;
+};
 
 export type Message = {
-  id: string
-  content: string
-  created_at: Date
-  chat_id: string
-  sender_user_id: string
-}
+  id: string;
+  content: string;
+  created_at: Date;
+  chat_id: string;
+  sender_user_id: string;
+};
 
 export type Chat = {
-  id: string
-}
+  id: string;
+};
 
-export const pool = new Pool({
+export const dbConfig = {
   host: 'localhost',
-  port: 5432,
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
   user: 'testuser',
   password: 'testpassword',
-  database: 'whatsapp'
-})
+  database: 'whatsapp',
+};
+
+export let pool: Pool = new Pool(dbConfig);
+
+export async function initDb(): Promise<void> {
+  // Clear tables
+  await pool.query(sql`DROP TABLE IF EXISTS messages;`);
+  await pool.query(sql`DROP TABLE IF EXISTS chats_users;`);
+  await pool.query(sql`DROP TABLE IF EXISTS users;`);
+  await pool.query(sql`DROP TABLE IF EXISTS chats;`);
+
+  // Create tables
+  await pool.query(sql`CREATE TABLE chats(
+    id SERIAL PRIMARY KEY
+  );`);
+  await pool.query(sql`CREATE TABLE users(
+    id SERIAL PRIMARY KEY,
+    username VARCHAR (50) UNIQUE NOT NULL,
+    name VARCHAR (50) NOT NULL,
+    password VARCHAR (255) NOT NULL,
+    picture VARCHAR (255) NOT NULL
+  );`);
+  await pool.query(sql`CREATE TABLE chats_users(
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  );`);
+
+  await pool.query(sql`CREATE TABLE messages(
+    id SERIAL PRIMARY KEY,
+    content VARCHAR (355) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  );`);
+
+  // Privileges
+  await pool.query(
+    sql`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO testuser;`
+  );
+}
 
 export const resetDb = async () => {
-
-  await pool.query(sql`DELETE FROM users`)
+  await initDb();
 
   const sampleUsers = [
     {
@@ -70,18 +110,26 @@ export const resetDb = async () => {
       password: '$2a$08$6.mbXqsDX82ZZ7q5d8Osb..JrGSsNp4R3IKj7mxgF6YGT0OmMw242', // 555
       picture: 'https://randomuser.me/api/portraits/thumb/women/2.jpg',
     },
-  ]
+  ];
 
   for (const sampleUser of sampleUsers) {
     await pool.query(sql`
       INSERT INTO users(id, name, username, password, picture)
-      VALUES(${sampleUser.id}, ${sampleUser.name}, ${sampleUser.username}, ${sampleUser.password}, ${sampleUser.picture})
-    `)
+      VALUES(${sampleUser.id}, ${sampleUser.name}, ${sampleUser.username}, ${
+      sampleUser.password
+    }, ${sampleUser.picture})
+    `);
   }
 
-  await pool.query(sql`SELECT setval('users_id_seq', (SELECT max(id) FROM users))`)
+  await pool.query(
+    sql`SELECT setval('users_id_seq', (SELECT max(id) FROM users))`
+  );
 
-  await pool.query(sql`DELETE FROM chats`)
+  await pool.query(
+    sql`SELECT setval('users_id_seq', (SELECT max(id) FROM users))`
+  );
+
+  await pool.query(sql`DELETE FROM chats`);
 
   const sampleChats = [
     {
@@ -96,18 +144,20 @@ export const resetDb = async () => {
     {
       id: '4',
     },
-  ]
+  ];
 
   for (const sampleChat of sampleChats) {
     await pool.query(sql`
       INSERT INTO chats(id)
       VALUES(${sampleChat.id})
-    `)
+    `);
   }
 
-  await pool.query(sql`SELECT setval('chats_id_seq', (SELECT max(id) FROM chats))`)
+  await pool.query(
+    sql`SELECT setval('chats_id_seq', (SELECT max(id) FROM chats))`
+  );
 
-  await pool.query(sql`DELETE FROM chats_users`)
+  await pool.query(sql`DELETE FROM chats_users`);
 
   const sampleChatsUsers = [
     {
@@ -142,59 +192,83 @@ export const resetDb = async () => {
       chat_id: '4',
       user_id: '5',
     },
-  ]
+  ];
 
   for (const sampleChatUser of sampleChatsUsers) {
     await pool.query(sql`
       INSERT INTO chats_users(chat_id, user_id)
       VALUES(${sampleChatUser.chat_id}, ${sampleChatUser.user_id})
-    `)
+    `);
   }
 
-  await pool.query(sql`DELETE FROM messages`)
+  await pool.query(sql`DELETE FROM messages`);
+
+  const baseTime = new Date('1 Jan 2019 GMT').getTime();
 
   const sampleMessages = [
     {
       id: '1',
-      content: "You on your way?",
-      created_at: new Date(new Date('1-1-2019').getTime() - 60 * 1000 * 1000),
+      content: 'You on your way?',
+      created_at: new Date(baseTime - 60 * 1000 * 1000),
       chat_id: '1',
       sender_user_id: '1',
     },
     {
       id: '2',
       content: "Hey, it's me",
-      created_at: new Date(new Date('1-1-2019').getTime() - 2 * 60 * 1000 * 1000),
+      created_at: new Date(baseTime - 2 * 60 * 1000 * 1000),
       chat_id: '2',
       sender_user_id: '1',
     },
     {
       id: '3',
-      content: "I should buy a boat",
-      created_at: new Date(new Date('1-1-2019').getTime() - 24 * 60 * 1000 * 1000),
+      content: 'I should buy a boat',
+      created_at: new Date(baseTime - 24 * 60 * 1000 * 1000),
       chat_id: '3',
       sender_user_id: '1',
     },
     {
       id: '4',
-      content: "This is wicked good ice cream.",
-      created_at: new Date(new Date('1-1-2019').getTime() - 14 * 24 * 60 * 1000 * 1000),
+      content: 'This is wicked good ice cream.',
+      created_at: new Date(baseTime - 14 * 24 * 60 * 1000 * 1000),
       chat_id: '4',
       sender_user_id: '1',
     },
-  ]
+  ];
+
+  if (fakedDb) {
+    addFakedMessages(sampleMessages, fakedDb);
+  }
 
   for (const sampleMessage of sampleMessages) {
     await pool.query(sql`
       INSERT INTO messages(id, content, created_at, chat_id, sender_user_id)
-      VALUES(${sampleMessage.id}, ${sampleMessage.content}, ${sampleMessage.created_at}, ${sampleMessage.chat_id}, ${sampleMessage.sender_user_id})
-    `)
+      VALUES(${sampleMessage.id}, ${sampleMessage.content}, ${
+      sampleMessage.created_at
+    }, ${sampleMessage.chat_id}, ${sampleMessage.sender_user_id})
+    `);
   }
 
-  await pool.query(sql`SELECT setval('messages_id_seq', (SELECT max(id) FROM messages))`)
+  await pool.query(
+    sql`SELECT setval('messages_id_seq', (SELECT max(id) FROM messages))`
+  );
+};
 
+function addFakedMessages(messages: Message[], count: number) {
+  const message = messages[0];
+  const date = message.created_at;
+  const id = messages.length + 1;
+
+  new Array(count).fill(0).forEach((_, i) => {
+    messages.push({
+      ...message,
+      id: `${id + i}`,
+      content: faker.lorem.sentence(4),
+      created_at: addMinutes(date, i + 1),
+    });
+  });
 }
 
 if (envResetDb) {
-  resetDb()
+  resetDb();
 }

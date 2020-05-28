@@ -171,13 +171,12 @@ Essentially GraphQL is connected into a HTTP endpoint, usually under `POST /grap
 Luckily, we don't have to implement that. A team called [Apollo](https://www.apollographql.com/) already did it for us, so we can use their implementation. 
 We will install the required packages:
 
-    $ yarn add apollo-server-express body-parser graphql
-    $ yarn add --dev @types/body-parser @types/graphql
+    $ yarn add apollo-server-express graphql
+    $ yarn add --dev @types/graphql
 
 - [`graphql`](https://www.npmjs.com/package/graphql) - The core package of GraphQL that includes the resolvers for basic data-types.
 - [`apollo-server-express`](https://www.npmjs.com/package/apollo-server-express) - Apollo's implementation for the GraphQL Express REST endpoint.
-- [`body-parser`](https://www.npmjs.com/package/body-parser) - Parse incoming request bodies in a middleware before your handlers, available under the req.body property.
-- `@types/…` - TypeScript definitions. Notice that we didn't need to install Apollo's types library. That is because Apollo themselves writes their source code in Typescript so 
+- `@types/graphql` - TypeScript definitions. Notice that we didn't need to install Apollo's types library. That is because Apollo themselves writes their source code in Typescript so 
 we get a ready Typescript code directly from their library.
 
 We can now connect Apollo's middleware under the `/graphql` route:
@@ -191,6 +190,14 @@ As you can see, the middleware requires a schema. A schema is composed mainly ou
 
 We will start first by defining the types. 
 All we have to do is to copy-paste the contents of the schema that was shown earlier into a new file called `typeDefs.graphql`:
+
+Note that some of the fields have exclamation mark at the end and it means that the field is non-nullable, 
+meaning that the GraphQL service promises to always give you a value when you query this field.  
+
+Chats Query is even more interesting case with two exclamation marks `[Chat!]!`. 
+
+The outer exclamation mark means that if you run this query it will always return an array of zero or more items (never null)
+and inner exclamation mark means that every item of returned array will be of type `Chat` and never be null. 
 
 {{{ diffStep "2.2" module="server" files="schema/typeDefs.graphql" }}}
 
@@ -268,7 +275,6 @@ In the next chapter, we will continue working on the UI of our front-end applica
 
 -------
 TODO: Start with calling the  `graphql` function just on the server to show how it works.
-TODO: Separate step for body parser.
 TODO: Example middlewares in Node
 TODO: Mention the vs code extension
 

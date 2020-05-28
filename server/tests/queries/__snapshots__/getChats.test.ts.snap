@@ -7,7 +7,7 @@ Object {
       "id": "1",
       "lastMessage": Object {
         "content": "You on your way?",
-        "createdAt": "2018-12-31T06:20:00.000Z",
+        "createdAt": "2018-12-31T07:20:00.000Z",
         "id": "1",
       },
       "name": "Ethan Gonzalez",
@@ -17,7 +17,7 @@ Object {
       "id": "2",
       "lastMessage": Object {
         "content": "Hey, it's me",
-        "createdAt": "2018-12-30T13:40:00.000Z",
+        "createdAt": "2018-12-30T14:40:00.000Z",
         "id": "2",
       },
       "name": "Bryan Wallace",
@@ -27,7 +27,7 @@ Object {
       "id": "3",
       "lastMessage": Object {
         "content": "I should buy a boat",
-        "createdAt": "2018-12-15T07:00:00.000Z",
+        "createdAt": "2018-12-15T08:00:00.000Z",
         "id": "3",
       },
       "name": "Avery Stewart",
@@ -37,7 +37,7 @@ Object {
       "id": "4",
       "lastMessage": Object {
         "content": "This is wicked good ice cream.",
-        "createdAt": "2018-05-12T15:00:00.000Z",
+        "createdAt": "2018-05-12T16:00:00.000Z",
         "id": "4",
       },
       "name": "Katie Peterson",

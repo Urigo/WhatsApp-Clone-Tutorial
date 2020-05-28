@@ -78,7 +78,10 @@ And we will update the `cache.service` to listen to the new subscription and upd
 
 {{{ diffStep 12.5 module="client" files="cache.service" }}}
 
-We will also update the `ChatRoomScreen` to redirect us to the `/chats` route if the chat was not found. The render method of the component will be re-triggered automatically by `react-apollo-hooks` if the cached result of `useGetChat()` hook has changed, which means that even if you didn’t actively remove the chat, you will still be redirected as a result:
+We will also update the `ChatRoomScreen` to redirect us to the `/chats` route if the chat was not found. 
+
+The render method of the component will be re-triggered automatically by `@apollo/react-hooks` if the cached result of `useGetChat()` hook has changed, 
+which means that even if you didn’t actively remove the chat, you will still be redirected as a result:
 
 {{{ diffStep 12.5 module="client" files="ChatRoom" }}}
 

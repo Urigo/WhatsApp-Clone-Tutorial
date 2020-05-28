@@ -35,7 +35,7 @@ We will first start with the `signIn` mutation, so we can test it against pre-de
 
 And we will implement the `signIn` mutation:
 
-{{{ diffStep 10.2 module="server" files="schema" }}}
+{{{ diffStep 10.2 module="server" }}}
 
 As you can see we use a special secret before we encrypt the username with JWT. The same secret will be used later on to decrypt the token back into username when getting requests. If someone malicious will get a hold of that password, he can fabricate an authentication token for every user that he wants, **thus it’s important to choose a strong secret**.
 
@@ -61,15 +61,23 @@ mutation signIn(username: 'ray', password: '111') {
 
 Now if we would look at the value of `document.cookie` we should see a key named `authToken` with a JWT token and the `ChatsListScreen` should show the chats which are relevant to `ray`. To complete the sign-in flow we would need to update the `AuthScreen` and the `auth.service` to use username and password and the actual `sign-in` mutation we’ve just implemented.
 
+Now back to the `auth.service`, we will replace the `signIn()` method implementation with one that actually calls the `signIn` mutation in our API. We will start by defining the mutation:
+
+{{{ diffStep 13.2 module="client" files="graphql/mutations" }}}
+
+Updating `codegen.yml` to include the file we've just added in the generation process:
+
+{{{ diffStep 13.2 module="client" files="codegen.yml" }}}
+
+And finally, we will update the service to use the generated mutation method `useSignInMutation()`:
+
+{{{ diffStep 13.2 module="client" files="auth.service.ts" }}}
+
 To check if we’re authorized to visit a route, not only we would need to check if we have the `authToken` cookie defined, but we would also need to validate it against the server to see that it actually references a real user. For that we will implement `Query.me` which will send us back the current user logged in directly from the context:
 
 {{{ diffStep 10.5 module="server" }}}
 
-Now back to the `auth.service`, we will replace the `signIn()` method implementation with one that actually calls the `signIn` mutation in our API:
-
-{{{ diffStep 13.2 module="client" }}}
-
-And we will use the GraphQL query we’ve just implemented to check if the user actually exists within the DB before we proceed to the restricted route:
+Now will use the GraphQL query we’ve just implemented to check if the user actually exists within the DB before we proceed to the restricted route:
 
 {{{ diffStep 13.3 module="client" }}}
 
@@ -109,10 +117,10 @@ And then we will make the necessary changes in the `AuthScreen`:
 
 The authentication flow is complete! To test it out, you can create a new user, log in with it and start chatting with other users.
 
-------------
-
-TODO: maybe use HttpOnly in cookie
-save user’s id or data in localStorage so we can guess if a user is logged in or not and later on invalidate it
-we send a password in its raw form over the wire
-Error message: “req.password and req.passwordConfirm don't match” looks odd, should be “Passwords don’t match”
-Why is `const maySignUp = useCallback(() => {` a useCallback and not useMemo for example? We do use a value there.
+{{#noop}}
+  TODO: maybe use HttpOnly in cookie
+  save user’s id or data in localStorage so we can guess if a user is logged in or not and later on invalidate it
+  we send a password in its raw form over the wire
+  Error message: “req.password and req.passwordConfirm don't match” looks odd, should be “Passwords don’t match”
+  Why is `const maySignUp = useCallback(() => {` a useCallback and not useMemo for example? We do use a value there.
+{{/noop}}

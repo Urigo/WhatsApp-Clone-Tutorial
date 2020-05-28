@@ -1,0 +1,77 @@
+config:
+  target: 'http://localhost:4000/graphql'
+  phases:
+    - duration: 120
+      arrivalRate: 5
+    - duration: 120
+      arrivalRate: 10
+    - duration: 300
+      arrivalRate: 10
+    - duration: 60
+      arrivalRate: 100
+scenarios:
+  - name: 'Sign in, send a new message and fetch a list of chats'
+    flow:
+      - post:
+          url: '/'
+          json:
+            variables:
+              username: 'ray'
+              password: '111'
+            query: |
+              mutation SignIn($username: String!, $password: String!) {
+                signIn(username: $username, password: $password) {
+                  id
+                }
+              }
+      - post:
+          url: '/'
+          json:
+            query: |
+              mutation message {
+                addMessage(chatId: "1", content: "artillery") {
+                  id
+                }
+              }
+      - post:
+          url: '/'
+          json:
+            variables:
+              limit: 20
+            query: |
+              fragment User on User {
+                id
+                name
+                picture
+              }
+              fragment Message on Message {
+                id
+                content
+                chat {
+                  id
+                }
+                sender {
+                  ...User
+                }
+                recipient {
+                  ...User
+                }
+              }
+              query GetChats($limit: Int!) {
+                chats {
+                  id
+                  name
+                  picture
+                  lastMessage {
+                    ...Message
+                  }
+                  messages(limit: $limit) {
+                    messages {
+                      ...Message
+                    }
+                  }
+                  participants {
+                    ...User
+                  }
+                }
+              }

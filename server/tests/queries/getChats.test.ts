@@ -1,19 +1,19 @@
-import { createTestClient } from 'apollo-server-testing'
-import { gql } from 'apollo-server-express'
+import { createTestClient } from 'apollo-server-testing';
+import { gql } from 'apollo-server-express';
 import { server } from '../../server';
 import { resetDb } from '../../db';
 import { mockAuth } from '../mocks/auth.provider';
 
 describe('Query.chats', () => {
-  beforeEach(resetDb)
-  
+  beforeEach(resetDb);
+
   it('should fetch all chats', async () => {
     mockAuth(1);
 
-    const { query } = createTestClient(server)
+    const { query } = createTestClient(server);
 
     const res = await query({
-      query: gql `
+      query: gql`
         query GetChats {
           chats {
             id
@@ -27,10 +27,10 @@ describe('Query.chats', () => {
           }
         }
       `,
-    })
+    });
 
-    expect(res.data).toBeDefined()
-    expect(res.errors).toBeUndefined()
-    expect(res.data).toMatchSnapshot()
-  })
-})
+    expect(res.data).toBeDefined();
+    expect(res.errors).toBeUndefined();
+    expect(res.data).toMatchSnapshot();
+  });
+});

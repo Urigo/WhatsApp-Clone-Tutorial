@@ -35,7 +35,7 @@ const resolvers: Resolvers = {
     },
     async users(root, args, { injector }) {
       const currentUser = await injector.get(Auth).currentUser();
-      
+
       if (!currentUser) return [];
 
       return injector.get(Users).findAllExcept(currentUser.id);
@@ -43,11 +43,17 @@ const resolvers: Resolvers = {
   },
   Mutation: {
     async signIn(root, { username, password }, { injector }) {
-      return injector.get(Auth).signIn({username, password});
+      return injector.get(Auth).signIn({ username, password });
     },
 
-    async signUp(root, { name, username, password, passwordConfirm }, { injector }) {
-      return injector.get(Auth).signUp({name, username, password, passwordConfirm });
+    async signUp(
+      root,
+      { name, username, password, passwordConfirm },
+      { injector }
+    ) {
+      return injector
+        .get(Auth)
+        .signUp({ name, username, password, passwordConfirm });
     },
   },
 };
@@ -57,5 +63,5 @@ export default new GraphQLModule({
   typeDefs,
   resolvers,
   imports: () => [commonModule],
-  providers: () => [Users, Auth]
+  providers: () => [Users, Auth],
 });
