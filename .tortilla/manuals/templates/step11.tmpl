@@ -1,0 +1,137 @@
+Our chat app is pretty functional. We can pick a chat from the chats list and we can send messages. It's not hard to notice that one of the most important mechanisms is missing, which is relating a chat or a message to a specific user. Even though we can send messages, it's basically pointless unless someone else receives it. In this chapter we will create a new users collection with pre-defined documents and we will learn how to simulate authentication programmatically so we can test the new mechanism.
+
+**Reshaping the back-end**
+
+To implement this feature we need to rethink our back-end and reshape the way our GraphQL schema is structured. Right now we only have 2 entities: Chat and Message, which are connected like so:
+
+
+
+![chat-message-orm](https://user-images.githubusercontent.com/7648874/55325929-0faa1b00-54b9-11e9-8868-7a8ed3edcda1.png)
+
+
+We want to have a new User entity where each user will have Chats he participates in and Messages he owns. Therefore, our new GraphQL schema should look like something like this:
+
+
+
+![chat-message-user-orm](https://user-images.githubusercontent.com/7648874/55325935-146ecf00-54b9-11e9-8c0f-bc3b63cbe676.png)
+
+This change would require us to update the GraphQL type definitions and handlers, the DB models, and the codegen configuration file:
+
+{{{ diffStep 8.1 module="server" }}}
+
+Even though we made these changes, the app remained the same. That's because the Query type haven't changed at all, and we still serve the same data as before. What we need to do is to edit the Query resolvers to serve data based on the user that is currently logged-in to the app in the current session. Before we go all in with a robust authentication system, it would be smarter to simulate it, so we can test our app and see that everything works as intended.
+
+For now, let's assume that we're logged in with user of ID 1 - Ray Edwards. Codewise, this would mean that we will need to have the current user defined on the resolver context. In the main file, let's add the `currentUser` field to the context using a simple `find()` method from our `users` collection:
+
+{{{ diffStep 8.2 module="server" files="index.ts" }}}
+
+And we will update the context type:
+
+{{{ diffStep 8.2 module="server" files="context" }}}
+
+Now we will update the resolvers to fetch data relatively to the current user logged in. If there's no user logged in, the resolvers should return `null`, as the client is not authorized to view the data he requested:
+
+{{{ diffStep 8.2 module="server" files="schema, tests" }}}
+
+Now if we will get back to the app and refresh the page, we should see a new chats list which is only relevant to Ray Edwards. Earlier in this chapter, we've defined a new `isMine` field on the `Message` type. This field is useful because now we can differentiate between messages that are mine and messages that belong to the recipient. We can use that information to distinct between messages in our UI.
+
+Let's first download a new image that will help us achieve the new style and save it under the [`src/public/assets/message-yours.png`](https://github.com/Urigo/WhatsApp-Clone-Client-React/blob/cordova/public/assets/message-other.png?raw=true) path. Then let's implement the new style:
+
+{{{ diffStep 11.1 module="client" files="src/components" }}}
+
+This is how the updated `ChatRoomScreen` should look like:
+
+
+
+![chat-room-screen](https://user-images.githubusercontent.com/7648874/55326701-face8700-54ba-11e9-877e-0b7dd71a1b68.png)
+
+
+
+We can use a temporary solution to log-in and alternate between different users. This would be a good way to test data authorization without implementing an authentication mechanism. One way to know which user is logged in is via [cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies).
+
+Cookies are just text files which are stored locally on your computer and they contain key-value data maps. Cookies will be sent automatically by the browser with every HTTP request under the `Cookie` header. The header can be parsed and read by the server and this way inform it about the state of the client. Cookie values can also be set by the server by sending back a response which contain a `Set-Cookie` header. The browser will automatically write these cookies because of its specification and how it works.
+
+This is how you can set cookies on the client:
+
+```js
+document.cookie = "yummy_cookie=choco"
+document.cookie = "tasty_cookie=strawberry"
+// logs "yummy_cookie=choco; tasty_cookie=strawberry"
+```
+
+And this is how further requests would look like:
+
+```
+GET /sample_page.html HTTP/2.0
+Host: www.example.org
+Cookie: yummy_cookie=choco; tasty_cookie=strawberry
+```
+
+Using this method we can set the current user's ID. Open your browser's dev-console, and type the following:
+
+```js
+// Ray Edwards
+document.cookie = 'currentUserId=1'
+```
+
+To be able to send cookies with Apollo Client, we need to set the [`credentials`](https://www.apollographql.com/docs/react/recipes/authentication#cookie) option to "include" when creating the HTTP link:
+
+{{{ diffStep 11.2 module="client" }}}
+
+This will set the [`Access-Control-Allow-Credentials`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Credentials) header to “include” with each HTTP request which is necessary when using the POST method. In correlation to that, we would need to configure the server to be able to receive and set cookies. This can be done via CORS options like so:
+
+{{{ diffStep 8.4 module="server" files="index.ts" }}}
+
+So how exactly does one retrieve the values of the cookies? Like mentioned earlier, each and every request will have them set on the `cookie` header, so one way would be by reading the header directly, but a more convenient way would be using an Express middleware called [`cookie-parser`](https://www.npmjs.com/package/cookie-parser):
+
+    $ yarn add cookie-parser
+
+{{{ diffStep 8.5 module="server" files="index.ts" }}}
+
+`cookie-parser` will read the `Cookie` header, it will parse it into a JSON and will define it on `req.cookies`. Since we’re using Apollo-Server with Express, the `req` object should be accessible as the first argument in the `context` function. This means that we can use the `currentUserId` from the cookies to fetch the current user from our users collection and define it on the context object:
+
+{{{ diffStep 8.6 module="server" }}}
+
+Now you can go ahead and change the value of the `currentUserId` cookie and see how it affects the view anytime you refresh the page. Needless to say that this is not the most convenient way to switch between users, so we’re gonna implement a dedicated screen that will set the cookies for us.
+
+All the auth related logic should go into a dedicated service since it can serve us vastly across the application, not just for a single component. Thus we will create a new service called `auth.service`, which will contain 3 basic functions for now: `signIn()`, `signOut()` and `isSignedIn():
+
+{{{ diffStep 11.3 module="client" }}}
+
+Now we will implement the `AuthScreen`. For now this screen should be fairly simple. It should contain a single `TextField` to specify the current user ID, and a `sign-in` button that will call the `signIn()` method with the specified ID. Once it does so, we will be proceeded to the `ChatsListScreen`. First we will download and save the following assets:
+
+- [`src/public/assets/whatsapp-icon.ping`](https://github.com/Urigo/WhatsApp-Clone-Client-React/raw/wip/cookie-auth/public/assets/whatsapp-icon.png)
+
+{{{ diffStep 11.4 module="client" files="components" }}}
+
+Accordingly we will define a new `/sign-in` route that will render the `AuthScreen` we’re under that path name:
+
+{{{ diffStep 11.4 module="client" files="App" }}}
+
+This is how the new screen should look like:
+
+![auth-screen](https://user-images.githubusercontent.com/7648874/55606715-7a56a180-57ac-11e9-8eea-2da5931cccf5.png)
+
+Now let’s type the `/sign-in` route in our browser’s navigation bar and assign a user ID, see how it affects what chats we see in the `ChatsListScreen`. You’ve probably noticed that there’s no way to escape from the `/chats` route unless we edit the browser’s navigation bar manually. To fix that, we will add a new sign-out button to the navbar of the `ChatsListScreen` that will call the `signOut()` method anytime we click on it, and will bring us back to the `AuthScreen`:
+
+{{{ diffStep 11.5 module="client" }}}
+
+At this point we’ve got everything we need, but we will add a small touch to improve the user experience and make it feel more complete. Users who aren’t logged in shouldn’t be able to view any screen besides the `AuthScreen`. First they need to sign-in, and only then they will be able to view the `ChatsListScreen` and `ChatRoomScreen`. To achieve that, we will wrap all the components which require authentication before we provide them into their routes. This wrap will basically check whether a user is logged in or not by reading the cookies, and if not we will be redirected to the `/sign-in` route. Let’s implement that wrap in the `auth.service` and call it `withAuth()`:
+
+{{{ diffStep 11.6 module="client" files="auth.service" }}}
+
+We will use this function to wrap the right components in our app’s router. Note that since we used the `useCacheService()` directly in the `withAuth()` method, there’s no need to use it in the router itself anymore. This makes a lot more sense since there’s no need to stay subscribed to data that you're not gonna receive from the first place unless you’re logged-in:
+
+{{{ diffStep 11.6 module="client" files="App" }}}
+
+Assuming that you’re not logged-in, if you’ll try to force navigate to the `/chats` route you should be automatically redirected to the `/sign-in` form. We will finish the chapter here as we wanna keep things simple and gradual. It’s true that we haven’t implemented true authentication, but that would be addressed soon further in this tutorial.
+
+---------
+
+TODO: minor change, which might be helpful for people in long term. That’s a small but powerful thing to know about in TypeScript
++ recipient: chat.participants.find(p => p !== currentUser.id)!
+- recipient: chat.participants.find(p => p !== currentUser.id) as string
+
+
+TODO: I don’t think we need `if (props.history.location.pathname === '/sign-in') return null`
+since withAuth HOC is not used on `AuthScreen` component

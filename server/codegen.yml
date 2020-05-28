@@ -1,0 +1,23 @@
+overwrite: true
+generates:
+  ./types/graphql.d.ts:
+    schema: ./modules/*/*.ts
+    plugins:
+      - typescript
+      - typescript-resolvers
+    config:
+      useIndexSignature: true
+      contextType: ../context#MyContext
+      mappers:
+        # import { Message } from '../db'
+        # The root types of Message resolvers
+        User: ../db#User
+        Message: ../db#Message
+        Chat: ../db#Chat
+      scalars:
+        # e.g. Message.createdAt will be of type Date
+        Date: Date
+  ./types/unsplash.d.ts:
+    schema: ./logs/main/Unsplash.RandomPhoto.graphql
+    plugins:
+      - typescript
